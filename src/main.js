@@ -650,6 +650,7 @@ $('enter').addEventListener('click', () => {
   if (MUTE) { soundBtn.classList.add('off'); }
   try { localStorage.setItem('locus-suono', MUTE ? 'off' : 'on'); } catch (e) {}
   gate.classList.add('out');
+  document.body.classList.add('entered');
   soundBtn.classList.add('on');
   document.body.classList.remove('locked');
   lenis.start();
