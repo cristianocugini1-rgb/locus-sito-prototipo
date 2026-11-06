@@ -274,51 +274,107 @@ hero.add(drops);
 /* 2. I TRE ANELLI in cui si entra scorrendo                           */
 /* ------------------------------------------------------------------ */
 const RINGS = [
-  { z: -14, color: COL.rosso, glow: 3.2, mood: 0.35 },
-  { z: -32, color: COL.arancio, glow: 1.6, mood: 0.7 },
-  { z: -50, color: COL.crema, glow: 0.55, mood: 0.5 },
+  { z: -14, color: new THREE.Color('#ff3414'), metal: '#a8604a', mood: 0.35 },
+  { z: -32, color: new THREE.Color('#ff8a24'), metal: '#c49058', mood: 0.7 },
+  { z: -50, color: new THREE.Color('#ffe6c4'), metal: '#d6c6ae', mood: 0.5 },
 ];
+// fascio di luce: pieno dove guarda la camera, sfuma sui bordi, con la luce che scorre lungo il cerchio
+const beamVS = /* glsl */ `
+  varying vec3 vN; varying vec3 vV; varying vec3 vP;
+  void main(){
+    vec4 wp = modelMatrix * vec4(position, 1.0);
+    vP = position;
+    vN = normalize(mat3(modelMatrix) * normal);
+    vV = normalize(cameraPosition - wp.xyz);
+    gl_Position = projectionMatrix * viewMatrix * wp;
+  }`;
+const beamFS = /* glsl */ `
+  uniform vec3 uColor; uniform float uTime, uPower, uGain, uFlash, uSeed, uFade;
+  varying vec3 vN; varying vec3 vV; varying vec3 vP;
+  void main(){
+    float facing = abs(dot(normalize(vN), normalize(vV)));
+    float body = pow(facing, uPower);
+    float a = atan(vP.y, vP.x);
+    float flow = 0.5 + 0.5 * sin(a * 3.0 - uTime * 1.2 + uSeed) * sin(a * 7.0 + uTime * 0.55 + uSeed * 2.0);
+    float spark = pow(max(sin(a * 19.0 - uTime * 2.2 + uSeed), 0.0), 16.0);
+    float i = body * uGain * (0.6 + flow * 0.7 + spark * 0.7) * (1.0 + uFlash * 1.4) * uFade;
+    gl_FragColor = vec4(uColor * i, 1.0);
+  }`;
+const beamMat = (color, power, gain, seed) => new THREE.ShaderMaterial({
+  uniforms: {
+    uColor: { value: color }, uTime: { value: 0 }, uPower: { value: power }, uGain: { value: gain },
+    uFlash: { value: 0 }, uSeed: { value: seed }, uFade: { value: 1 },
+  },
+  vertexShader: beamVS, fragmentShader: beamFS,
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+});
+const R_RING = 4.6;
 RINGS.forEach((r, i) => {
   const g = new THREE.Group();
   g.position.z = r.z;
-  const main = new THREE.Mesh(
-    new THREE.TorusGeometry(4.6, 0.075, 24, 280),
-    new THREE.MeshStandardMaterial({ color: r.color, emissive: r.color, emissiveIntensity: r.glow, roughness: 0.3, metalness: 0.1 })
+  // anima incandescente
+  const core = new THREE.Mesh(
+    new THREE.TorusGeometry(R_RING, 0.03, 16, 480),
+    new THREE.MeshBasicMaterial({ color: r.color.clone().lerp(new THREE.Color('#ffffff'), 0.35).multiplyScalar(2.0) })
   );
-  const thin = new THREE.Mesh(
-    new THREE.TorusGeometry(5.05, 0.012, 8, 280),
-    new THREE.MeshBasicMaterial({ color: COL.crema.clone().multiplyScalar(1.2), transparent: true, opacity: 0.7 })
-  );
-  // anello di grani che gira al contrario
+  // fascio e alone
+  const beam = new THREE.Mesh(new THREE.TorusGeometry(R_RING, 0.3, 48, 480), beamMat(r.color, 2.6, 0.85, i * 1.7));
+  const haze = new THREE.Mesh(new THREE.TorusGeometry(R_RING, 1.2, 32, 240), beamMat(r.color, 5.5, 0.2, i * 1.7 + 0.6));
+  // ghiera di metallo spazzolato, piatta come quella di un obiettivo
+  const metalMat = new THREE.MeshPhysicalMaterial({
+    color: r.metal, metalness: 1, roughness: 0.3, anisotropy: 0.8, clearcoat: 0.25, envMapIntensity: 1.3,
+  });
+  const band = new THREE.Mesh(new THREE.TorusGeometry(R_RING + 0.62, 0.06, 20, 480), metalMat);
+  band.scale.z = 4.5;
+  // tacche incise, una lunga ogni otto, come il mirino
+  const TN = 96;
+  const ticks = new THREE.InstancedMesh(new THREE.BoxGeometry(0.028, 0.14, 0.05), metalMat, TN);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), pos = new THREE.Vector3();
+  for (let k = 0; k < TN; k++) {
+    const ang = (k / TN) * Math.PI * 2;
+    const long = k % 8 === 0;
+    pos.set(Math.cos(ang) * (R_RING + 0.88 + (long ? 0.06 : 0)), Math.sin(ang) * (R_RING + 0.88 + (long ? 0.06 : 0)), 0);
+    q.setFromAxisAngle(new THREE.Vector3(0, 0, 1), ang - Math.PI / 2);
+    sc.set(1, long ? 2.1 : 1, 1);
+    ticks.setMatrixAt(k, m4.compose(pos, q, sc));
+  }
+  // polvere di luce che gira al contrario
   const N = small ? 900 : 1800;
   const pg = new THREE.BufferGeometry();
   const pp = new Float32Array(N * 3);
   for (let k = 0; k < N; k++) {
-    const a = Math.random() * Math.PI * 2;
-    const rad = 4.6 + (Math.random() - 0.5) * 1.3 * Math.random();
-    pp.set([Math.cos(a) * rad, Math.sin(a) * rad, (Math.random() - 0.5) * 0.6], k * 3);
+    const ang = Math.random() * Math.PI * 2;
+    const rad = R_RING + (Math.random() - 0.5) * 1.4 * Math.random();
+    pp.set([Math.cos(ang) * rad, Math.sin(ang) * rad, (Math.random() - 0.5) * 0.7], k * 3);
   }
   pg.setAttribute('position', new THREE.BufferAttribute(pp, 3));
   const grains = new THREE.Points(pg, new THREE.PointsMaterial({
-    size: 0.06, map: DOT, color: r.color.clone().lerp(COL.crema, 0.5), transparent: true, opacity: 0.8,
+    size: 0.045, map: DOT, color: r.color.clone().lerp(COL.crema, 0.55), transparent: true, opacity: 0.75,
     depthWrite: false, blending: THREE.AdditiveBlending,
   }));
-  g.add(main, thin, grains);
+  g.add(band, ticks, haze, beam, core, grains);
   g.rotation.z = i * 0.7;
   scene.add(g);
-  Object.assign(r, { group: g, main, thin, grains, flash: 0, passed: false });
+  Object.assign(r, { group: g, core, beam, haze, ticks, grains, flash: 0 });
 });
 
 /* ------------------------------------------------------------------ */
 /* 3. IL NASTRO DI SETA: foto che ondeggiano con la velocità           */
 /* ------------------------------------------------------------------ */
-const PHOTOS = Array.from({ length: 12 }, (_, i) => `${import.meta.env.BASE_URL}foto/foto-${String(i + 1).padStart(2, '0')}.jpg`);
+const NCARDS = 15;
+const PHOTOS = Array.from({ length: NCARDS }, (_, i) => `${import.meta.env.BASE_URL}foto/foto-${String(i + 1).padStart(2, '0')}.jpg`);
 const galleryZ = -68;
 const gallery = new THREE.Group();
 gallery.position.set(0, 0, galleryZ);
 scene.add(gallery);
 const shared = { uTime: { value: 0 }, uVel: { value: 0 }, uOpacity: { value: 0 } };
-const PW = 3.6, PH = 4.5, GAP = 4.5;
+const PW = 3.2, PH = 4.0, GAP_Y = 4.7;
+// tre colonne che salgono a velocità diverse
+const COLS = [
+  { x: -4.6, speed: 0.92, off: 1.8 },
+  { x: 0, speed: 1.1, off: 0 },
+  { x: 4.6, speed: 1.0, off: 3.0 },
+].map((c) => { const g = new THREE.Group(); gallery.add(g); return { ...c, g }; });
 
 function placeholder(i) {
   const c = document.createElement('canvas');
@@ -353,7 +409,7 @@ const cards = PHOTOS.map((src, i) => {
     u.uImgAspect.value = t.image.width / t.image.height;
   }, undefined, () => {});
   const m = new THREE.Mesh(
-    new THREE.PlaneGeometry(PW, PH, 48, 48),
+    new THREE.PlaneGeometry(PW, PH, 64, 80),
     new THREE.ShaderMaterial({
       uniforms: u,
       transparent: true,
@@ -364,12 +420,20 @@ const cards = PHOTOS.map((src, i) => {
           vUv = uv;
           vec4 wp = modelMatrix * vec4(position, 1.0);
           float k = 1.0 - uFocus;
+          float dy = wp.y - cameraPosition.y;
           float dx = wp.x - cameraPosition.x;
-          float wave = sin(wp.x * 0.55 + wp.y * 0.3 + uTime * 1.3);
-          wp.z -= dx * dx * 0.03 * k;                       // il nastro curva come un cilindro
-          wp.z += wave * uVel * 1.1 * k;                    // e ondeggia come seta quando corre
-          wp.y += cos(wp.x * 0.35 + uTime * 0.9) * uVel * 0.4 * k;
-          vShade = wave * uVel * k;
+          wp.z -= (dy * dy * 0.032 + dx * dx * 0.008) * k;          // il nastro si curva come un rullo
+          // pieghe di stoffa: tre onde sovrapposte, sempre vive e più forti quando si corre
+          float v = abs(uVel);
+          float w1 = sin(wp.y * 0.95 + wp.x * 0.35 + uTime * 1.5);
+          float w2 = sin(wp.y * 2.1 - wp.x * 0.9 - uTime * 1.1);
+          float w3 = sin(wp.x * 1.5 + wp.y * 0.4 + uTime * 0.8);
+          float fold = w1 * 0.65 + w2 * 0.3 + w3 * 0.25;
+          float amp = (0.1 + v * 1.25) * k;
+          wp.z += fold * amp;
+          wp.x += cos(wp.y * 0.7 + uTime) * uVel * 0.3 * k;
+          wp.y -= uVel * 0.25 * sin(wp.x * 0.5 + uTime * 0.6) * k;
+          vShade = (w1 * 0.9 * 0.95 + w2 * 0.3 * 2.1) * amp;      // pendenza: fa il riflesso della seta
           gl_Position = projectionMatrix * viewMatrix * wp;
         }`,
       fragmentShader: /* glsl */ `
@@ -383,19 +447,23 @@ const cards = PHOTOS.map((src, i) => {
         }
         void main(){
           vec2 uv = cover((vUv - 0.5) * (1.0 - uHover * 0.07) + 0.5);
-          float sh = uVel * 0.006;
-          vec3 c = vec3(texture2D(uTex, uv + vec2(sh, 0.0)).r, texture2D(uTex, uv).g, texture2D(uTex, uv - vec2(sh, 0.0)).b);
-          c *= 1.0 + vShade * 0.22;                          // riflesso della seta
-          c += vec3(0.10, 0.03, 0.0) * max(vShade, 0.0);
+          float sh = uVel * 0.005;
+          vec3 c = vec3(texture2D(uTex, uv + vec2(0.0, sh)).r, texture2D(uTex, uv).g, texture2D(uTex, uv - vec2(0.0, sh)).b);
+          float light = clamp(vShade * 0.6, -0.35, 0.35);
+          c *= 0.95 + light;                                          // pieghe in luce e in ombra
+          c += vec3(0.12, 0.05, 0.02) * max(light, 0.0);             // lucido caldo della seta
           vec2 e = smoothstep(0.0, 0.012, vUv) * smoothstep(0.0, 0.012, 1.0 - vUv);
           c *= 1.0 - uDim * 0.75;
           gl_FragColor = vec4(c, uOpacity * e.x * e.y);
         }`,
     })
   );
-  m.position.x = i * GAP;
-  m.userData = { i, u, base: new THREE.Vector3(i * GAP, 0, 0), focus: 0, hover: 0 };
-  gallery.add(m);
+  const col = COLS[i % 3];
+  const row = Math.floor(i / 3);
+  const base = new THREE.Vector3(col.x, -row * GAP_Y - col.off, 0);
+  m.position.copy(base);
+  m.userData = { i, u, base, focus: 0, hover: 0 };
+  col.g.add(m);
   return m;
 });
 let focused = null;
@@ -522,7 +590,7 @@ const gate = $('gate'), soundBtn = $('sound'), cursor = $('cursor'), veil = $('v
 const layers = {
   hero: $('l-hero'), r: [$('l-r1'), $('l-r2'), $('l-r3')], gal: $('l-gal'), batt: $('l-batt'), end: $('l-end'),
 };
-const goLink = document.querySelector('.go');
+const goLinks = [...document.querySelectorAll('.go')];
 
 // ?muto nell'indirizzo: il sito parte senza suono (serve per le prove)
 const MUTE = new URLSearchParams(location.search).has('muto');
@@ -530,6 +598,7 @@ $('enter').addEventListener('click', () => {
   if (MUTE) audio.muted = true;
   audio.start();
   if (MUTE) { soundBtn.classList.add('off'); }
+  try { localStorage.setItem('locus-suono', MUTE ? 'off' : 'on'); } catch (e) {}
   gate.classList.add('out');
   soundBtn.classList.add('on');
   document.body.classList.remove('locked');
@@ -538,6 +607,7 @@ $('enter').addEventListener('click', () => {
 soundBtn.addEventListener('click', () => {
   const m = !audio.muted;
   audio.setMuted(m);
+  try { localStorage.setItem('locus-suono', m ? 'off' : 'on'); } catch (e) {}
   soundBtn.classList.toggle('off', m);
   soundBtn.classList.toggle('on', !m);
 });
@@ -727,19 +797,25 @@ function frame(time) {
   /* 2. anelli */
   let mood = 0.3;
   RINGS.forEach((r, i) => {
-    r.group.rotation.z += dt * (0.05 + i * 0.02);
+    r.group.rotation.z += dt * (0.04 + i * 0.015);
     r.grains.rotation.z -= dt * 0.18;
-    r.thin.rotation.z += dt * 0.1;
+    r.ticks.rotation.z -= dt * 0.05;
     const d = cz - r.z;
     // passaggio dentro l'anello: lampo di luce e soffio
     if (prevCamZ > r.z && cz <= r.z) { r.flash = 1; audio.whoosh(); }
     if (prevCamZ < r.z && cz >= r.z) r.flash = 0.5;
     r.flash *= 0.94;
-    r.main.material.emissiveIntensity = r.glow * (1 + r.flash * 1.6);
+    const fade = 1 - seg(Math.abs(d), 16, 44);
+    const close = seg(Math.abs(d), 0.5, 7); // da vicino l'alone si ritira, sennò invade lo schermo
+    for (const m of [r.beam, r.haze]) {
+      const u = m.material.uniforms;
+      u.uTime.value = t; u.uFlash.value = r.flash;
+      u.uFade.value = fade * (m === r.haze ? lerp(0.08, 1, close) : lerp(0.45, 1, close));
+    }
     const near = clamp(1 - Math.abs(d) / 14);
-    r.group.scale.setScalar(1 + near * 0.06 * Math.sin(t * 2 + i));
-    r.group.rotation.x = mouseS.y * 0.12 * near;
-    r.group.rotation.y = mouseS.x * 0.12 * near;
+    r.group.scale.setScalar(1 + near * 0.05 * Math.sin(t * 2 + i));
+    r.group.rotation.x = mouseS.y * 0.14 * near;
+    r.group.rotation.y = mouseS.x * 0.14 * near;
     const vis = Math.min(seg(d, 14, 8), 1 - seg(d, 2, -1.5));
     showLayer(layers.r[i], vis);
     if (d < 16 && d > -2) mood = r.mood;
@@ -752,10 +828,10 @@ function frame(time) {
   shared.uTime.value = t;
   shared.uVel.value = lerp(shared.uVel.value, focused ? 0 : vel, 0.1);
   if (gallery.visible) {
-    const run = ease(seg(p, 0.47, 0.75));
-    const span = (cards.length - 1) * GAP;
-    gallery.position.x = lerp(12, -span - 12, run);
-    gallery.position.y = Math.sin(t * 0.3) * 0.08;
+    const run = ease(seg(p, 0.46, 0.76));
+    const rows = Math.ceil(NCARDS / 3) - 1;
+    COLS.forEach((c) => { c.g.position.y = -7 + run * (rows * GAP_Y + 14 + c.off) * c.speed; });
+    gallery.position.x = Math.sin(t * 0.25) * 0.1;
     ray.setFromCamera(mouse, camera);
     const hit = !focused && pointerSeen && shared.uOpacity.value > 0.5 ? ray.intersectObjects(cards)[0] : null;
     cards.forEach((m) => {
@@ -767,7 +843,7 @@ function frame(time) {
       ud.u.uDim.value = lerp(ud.u.uDim.value, focused && focused !== m ? 1 : 0, 0.08);
       // zoom al clic: la foto viene davanti e riempie la vista
       tmpV.set(camera.position.x, camera.position.y, cz - 6.1);
-      gallery.worldToLocal(tmpV);
+      m.parent.worldToLocal(tmpV);
       m.position.lerpVectors(ud.base, tmpV, ease(ud.focus));
       m.scale.setScalar(1 + ud.hover * 0.04 + ud.focus * 0.05);
     });
@@ -797,7 +873,7 @@ function frame(time) {
   showLayer(layers.hero, gate.classList.contains('out') ? 1 - seg(p, 0.012, 0.05) : 0);
   const endV = seg(p, 0.94, 0.985);
   showLayer(layers.end, endV);
-  goLink.style.pointerEvents = endV > 0.6 ? 'auto' : 'none';
+  goLinks.forEach((l) => { l.style.pointerEvents = endV > 0.6 ? 'auto' : 'none'; });
 
   /* suono: il colore cambia con la sezione e si apre con la velocità */
   if (p > 0.47 && p < 0.76) mood = 0.6;

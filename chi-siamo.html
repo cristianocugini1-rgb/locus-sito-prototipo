@@ -4,21 +4,234 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Locus · Chi siamo</title>
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=EB+Garamond:ital@0;1&display=swap" rel="stylesheet" />
-  <style>
-    html, body { margin: 0; height: 100%; background: #050202; color: #F5E4CB; }
-    body { display: flex; flex-direction: column; align-items: center; justify-content: center;
-           font-family: 'EB Garamond', serif; animation: in 2.4s ease both; }
-    h1 { font-family: 'Anton', sans-serif; text-transform: uppercase; font-weight: 400;
-         font-size: clamp(48px, 8vw, 120px); margin: 0; line-height: .9; }
-    p { font-style: italic; font-size: 22px; opacity: .75; }
-    a { color: #F5E4CB; letter-spacing: .3em; text-transform: uppercase; font-size: 12px; margin-top: 30px; }
-    @keyframes in { from { opacity: 0; } }
-  </style>
+  <meta name="description" content="Locus, cultura urbana e comunità a Parma. Un media, una comunità, una voce per gli under 35." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/chi.css" />
 </head>
 <body>
-  <h1>Chi siamo.</h1>
-  <p>Pagina segnaposto: serve a provare la musica che si dissolve all'uscita.</p>
-  <a href="./">torna</a>
+  <canvas id="bg"></canvas>
+  <div class="bar"><i id="progress"></i></div>
+
+  <header class="nav">
+    <a class="logo" href="./" data-dissolve aria-label="torna all'inizio"><img src="/img/logo-locus.jpg" alt="locus" /></a>
+    <nav id="menu">
+      <a href="#chi">Chi siamo</a>
+      <a href="#cosa">Cosa facciamo</a>
+      <a href="#format">Format</a>
+      <a href="#eventi">Eventi</a>
+      <a href="#futuro">Futuro</a>
+      <a href="#contatti">Contatti</a>
+    </nav>
+    <button id="sound" aria-label="suono"><i></i><i></i><i></i><i></i></button>
+    <button id="burger" aria-label="menu"><span></span><span></span></button>
+  </header>
+
+  <main>
+    <!-- APERTURA -->
+    <section id="chi" class="hero" data-tone="0">
+      <p class="kicker" data-r>Cultura urbana e comunità · Parma</p>
+      <h1 class="display" data-split>Il ponte tra le persone e chi decide.</h1>
+      <p class="lead" data-r style="--d:.5s">Un media per guardare oltre l'algoritmo, uno spazio per discutere il presente, una voce autorevole per gli under 35 di Parma.</p>
+      <p class="note" data-r style="--d:.7s">Associazione di promozione sociale, iscritta al RUNTS. Siamo nati il 19 marzo 2026.</p>
+      <a class="scroll-hint" href="#vuoto"><span>scorri</span><i></i></a>
+    </section>
+
+    <!-- IL PROBLEMA -->
+    <section id="vuoto" class="block" data-tone="0">
+      <p class="kicker" data-r>Il problema</p>
+      <h2 class="title" data-split>Il vuoto.</h2>
+      <p class="lead narrow" data-r>Una società spezzata, una generazione sola, una collettività anestetizzata.</p>
+      <div class="stats">
+        <article data-r style="--d:.1s">
+          <h3>La frattura</h3>
+          <p class="big"><b data-count="4">4</b> su 400</p>
+          <p>i deputati sotto i 30 anni eletti nel 2022. Una politica senza ricambio non trova le parole per i temi di chi ha meno di 35 anni.</p>
+        </article>
+        <article data-r style="--d:.25s">
+          <h3>La solitudine</h3>
+          <p class="big"><b data-count="20.5" data-dec="1">20,5</b>%</p>
+          <p>dei 16-34enni si è sentito solo nelle ultime quattro settimane. Nel 2018 era l'11,7%.</p>
+        </article>
+        <article data-r style="--d:.4s">
+          <h3>L'anestesia</h3>
+          <p class="big"><b data-count="35.4" data-dec="1">35,4</b>%</p>
+          <p>dei 18-24enni non si informa mai di politica. Fino ai 34 anni, solo uno su quattro ne parla ogni settimana.</p>
+        </article>
+      </div>
+      <p class="source" data-r>Fonti: Pagella Politica e Openpolis, 2022 · Istat, Eu-Silc 2018-2021 · Istat, Partecipazione politica 2024</p>
+    </section>
+
+    <!-- LA RISPOSTA -->
+    <section id="cosa" class="block" data-tone="1">
+      <p class="kicker" data-r>La risposta</p>
+      <h2 class="title" data-split>Riempire il vuoto.</h2>
+      <p class="lead narrow" data-r>Un media. Una comunità. Una voce.</p>
+      <div class="triad">
+        <article data-r style="--d:.1s">
+          <span class="num">01</span>
+          <h3>Conosci</h3>
+          <p class="tag">Il media, contro la frattura</p>
+          <p>Casa, lavoro, salute mentale, costo della vita, clima: la politica non ne parla. Noi li portiamo nel dibattito, con i dati su Parma.</p>
+        </article>
+        <article data-r style="--d:.25s">
+          <span class="num">02</span>
+          <h3>Incontra</h3>
+          <p class="tag">I format, contro la solitudine</p>
+          <p>Serate dal vivo che rompono l'isolamento: persone diverse si confrontano e restano in contatto. Si entra dal Meet Up, il primo sabato del mese.</p>
+        </article>
+        <article data-r style="--d:.4s">
+          <span class="num">03</span>
+          <h3>Costruisci</h3>
+          <p class="tag">Il modello, contro l'anestesia</p>
+          <p>Trasformiamo istanze e bisogni della comunità in proposte, e le portiamo fino a chi decide.</p>
+        </article>
+      </div>
+      <figure class="wide" data-r>
+        <div class="img" data-speed="0.12"><img src="/img/carosello-movida.jpg" alt="Il carosello di Locus sulla movida a Parma" loading="lazy" /></div>
+        <figcaption>Il carosello sulla movida: 100.000 visualizzazioni. Da lì è partito il tavolo con residenti, esercenti e amministrazione.</figcaption>
+      </figure>
+    </section>
+
+    <!-- I FORMAT -->
+    <section id="format" class="block" data-tone="1">
+      <p class="kicker" data-r>Incontra</p>
+      <h2 class="title" data-split>I format.</h2>
+      <p class="lead narrow" data-r>Trascina, o scorri di lato.</p>
+      <div class="rail" id="rail">
+        <article class="card">
+          <p class="when">Il primo sabato del mese</p>
+          <h3>Il Meet Up</h3>
+          <p>La porta d'ingresso di Locus: un appuntamento al mese, aperto a tutti. Ci si conosce, si lavora insieme ai tavoli e si chiude nella stessa giornata. Chi vuole resta: si tessera, diventa volontario, propone un progetto.</p>
+        </article>
+        <article class="card hot">
+          <p class="when">150 persone a serata</p>
+          <h3>La Grande Bolla</h3>
+          <p>Conversazioni urbane per uscire dalla propria bolla. Un tema per sera, tavoli di persone che di solito non si incontrano, un menù di tre posizioni da cui partire, il palco con tre ospiti, il microfono che gira in sala.</p>
+        </article>
+        <article class="card">
+          <p class="when">Da novembre 2026</p>
+          <h3>Speed Debate</h3>
+          <p>Conoscersi discutendo, dopocena, a tavolini da due. Tre round da 15 minuti, ognuno con una persona nuova. Una carta per round. Zero telefoni in vista. Alla fine, due ospiti con idee opposte sul palco.</p>
+        </article>
+        <article class="card">
+          <p class="when">Serate aperte</p>
+          <h3>Il Giovedì del Locus</h3>
+          <p>Una serata senza fretta, per conoscersi e ritrovarsi. Musica, ospiti, e tante birrette insieme.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- GLI EVENTI -->
+    <section id="eventi" class="block" data-tone="2">
+      <p class="kicker" data-r>Cosa abbiamo fatto</p>
+      <h2 class="title" data-split>Gli eventi.</h2>
+      <div class="split">
+        <ol class="timeline">
+          <li data-r><time>19 marzo 2026</time><h3>Il primo Giovedì del Locus</h3><p>La serata del lancio. Borgo Santa Brigida 5A.</p></li>
+          <li data-r><time>23 aprile 2026</time><h3>La Grande Bolla: Libertà</h3><p>"Pensati libero. Poi iscriviti." Borgo Santa Brigida 5/a.</p></li>
+          <li data-r><time>Primavera 2026</time><h3>Il Giovedì del Locus al Bar AlRovescio</h3><p>Al circolo Raquette, con The Parmigianer e il jazz dal vivo.</p></li>
+          <li data-r><time>25 giugno 2026</time><h3>La Grande Bolla vol. 10: La Bellezza</h3><p>Da Avèrt, al Parco Pellegrini.</p></li>
+          <li data-r><time>Ottobre 2026</time><h3>La Grande Bolla vol. 11: Il Cibo</h3><p>Tavoli, palco, birra e tanta voglia di confrontarsi con persone nuove. Ospiti di The Hub.</p></li>
+        </ol>
+        <div class="photos">
+          <figure data-r><div class="img tall" data-speed="0.18"><img src="/img/evento-palco.jpg" alt="Il palco e i tavoli durante una serata di Locus" loading="lazy" /></div></figure>
+          <figure data-r style="--d:.2s"><div class="img" data-speed="0.08"><img src="/img/evento-tavoli.jpg" alt="Gettoni colorati in mano durante un format di Locus" loading="lazy" /></div></figure>
+        </div>
+      </div>
+      <div class="numbers" data-r>
+        <div><b data-count="1500">1.500</b><span>presenze ai format</span></div>
+        <div><b data-count="500" data-plus>500+</b><span>iscritti alla mailing list</span></div>
+        <div><b data-count="90">90</b><span>soci tesserati</span></div>
+        <div><b data-count="35">35</b><span>volontari attivi</span></div>
+      </div>
+      <p class="source" data-r>Fonte: dati interni Locus, ottobre 2026</p>
+    </section>
+
+    <!-- IL FUTURO -->
+    <section id="futuro" class="block future" data-tone="3">
+      <p class="kicker" data-r>Il futuro</p>
+      <h2 class="title" data-split>Cosa arriva.</h2>
+      <p class="lead narrow" data-r>Gli appuntamenti in calendario e quello che stiamo costruendo.</p>
+      <div class="upcoming" id="upcoming">
+        <article data-r data-date="2026-11-07">
+          <div class="d"><b>7</b><span>nov</span></div>
+          <div class="t"><p class="when">Sabato, dalle 14.30 <em class="count"></em></p><h3>Meet Up: Conosci. Incontra. Costruisci.</h3><p>Un pomeriggio insieme: Locus si presenta e incontra chi vuole far parte del progetto. Sala Civica Cittadella, via Antonio Bizzozero 15. Iscrizione obbligatoria dal link in bio.</p></div>
+        </article>
+        <article data-r data-date="2026-11-14">
+          <div class="d"><b>14</b><span>nov</span></div>
+          <div class="t"><p class="when">Sabato, ore 15.00 <em class="count"></em></p><h3>In piazza con Spazio8</h3><p>Barriera Santa Croce. Con le nostre bandiere e quelle di nessun altro. Scrivici in DM per aderire.</p></div>
+        </article>
+        <article data-r>
+          <div class="d"><b>nov</b><span>2026</span></div>
+          <div class="t"><p class="when">Nuovo format</p><h3>Speed Debate</h3><p>Il dopocena in cui ci si conosce discutendo.</p></div>
+        </article>
+      </div>
+      <div class="horizon">
+        <article data-r style="--d:.1s"><time>Gennaio 2027</time><h3>La newsletter</h3><p>Le storie e la voce dei giovani di Parma.</p></article>
+        <article data-r style="--d:.2s" class="hot"><time>7, 8 e 9 maggio 2027</time><h3>Il Festival, edizione zero</h3><p>Le proposte diventano pubbliche davanti a chi decide, nell'anno di Parma Capitale europea dei giovani.</p></article>
+        <article data-r style="--d:.3s"><time>Ottobre 2027</time><h3>Locus Media House</h3><p>Un'academy per capire il linguaggio dei nuovi media.</p></article>
+      </div>
+      <div class="goals" data-r>
+        <p class="kicker">Obiettivi 2027</p>
+        <ul>
+          <li><b>8.000</b> follower</li>
+          <li><b>3.000</b> presenze ai format</li>
+          <li><b>150</b> soci</li>
+          <li><b>3</b> proposte portate ai decisori</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- LA SQUADRA -->
+    <section id="squadra" class="block" data-tone="2">
+      <p class="kicker" data-r>La squadra</p>
+      <h2 class="title" data-split>Chi siamo.</h2>
+      <p class="lead narrow" data-r>Direttivo eletto il 10 ottobre 2026, in carica fino al 2029. Con noi 35 volontari su comunicazione, organizzazione ed eventi.</p>
+      <ul class="team">
+        <li data-r><b>Filippo Mazzieri</b><span>Presidente</span></li>
+        <li data-r style="--d:.05s"><b>Letizia Zanoletti</b><span>Vicepresidente</span></li>
+        <li data-r style="--d:.1s"><b>Emanuele Costa</b><span>Segretario</span></li>
+        <li data-r style="--d:.15s"><b>Giuseppe Cipollina</b><span>Tesoriere</span></li>
+        <li data-r style="--d:.2s"><b>Fatima Di Prima</b><span>Consigliera</span></li>
+        <li data-r style="--d:.25s"><b>Maria Bergamaschi</b><span>Consigliera</span></li>
+        <li data-r style="--d:.3s"><b>Simona Mora</b><span>Consigliera</span></li>
+      </ul>
+      <p class="kicker" data-r>Con chi abbiamo lavorato</p>
+      <div class="marquee"><div class="track">
+        <span>TEDx</span><span>Festival della Lentezza</span><span>The Hub</span><span>The Parmigianer</span><span>Progetto SUM</span><span>Il Borgo</span><span>Dailab</span><span>Parma 2027</span><span>Pagella Politica</span><span>Comin &amp; Partners</span>
+        <span>TEDx</span><span>Festival della Lentezza</span><span>The Hub</span><span>The Parmigianer</span><span>Progetto SUM</span><span>Il Borgo</span><span>Dailab</span><span>Parma 2027</span><span>Pagella Politica</span><span>Comin &amp; Partners</span>
+      </div></div>
+    </section>
+
+    <!-- CONTATTI -->
+    <section id="contatti" class="block contacts" data-tone="0">
+      <p class="kicker" data-r>Contatti</p>
+      <h2 class="title" data-split>Trova il tuo posto.</h2>
+      <p class="lead narrow" data-r>Ci vediamo al Meet Up, il primo sabato del mese. Oppure scrivici.</p>
+      <div class="links">
+        <a data-r href="mailto:locus.parma@gmail.com"><span>Email</span><b>locus.parma@gmail.com</b></a>
+        <a data-r style="--d:.1s" href="https://www.instagram.com/locus_parma/" target="_blank" rel="noopener"><span>Instagram</span><b>@locus_parma</b></a>
+      </div>
+      <div class="ig" data-r>
+        <a href="https://www.instagram.com/locus_parma/" target="_blank" rel="noopener"><img src="/img/carosello-movida.jpg" alt="Post di Locus sulla movida" loading="lazy" /></a>
+        <a href="https://www.instagram.com/locus_parma/" target="_blank" rel="noopener"><img src="/img/evento-palco.jpg" alt="Una serata di Locus" loading="lazy" /></a>
+        <a href="https://www.instagram.com/locus_parma/" target="_blank" rel="noopener"><img src="/img/carosello-costo.jpg" alt="Post di Locus: quanto costa uscire a Parma" loading="lazy" /></a>
+        <a href="https://www.instagram.com/locus_parma/" target="_blank" rel="noopener"><img src="/img/evento-tavoli.jpg" alt="Un format di Locus" loading="lazy" /></a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p class="motto">trova il tuo posto, riempi il vuoto</p>
+    <p>Associazione Locus · cultura urbana e comunità · APS iscritta al RUNTS · Parma</p>
+    <a href="./" data-dissolve>torna all'inizio</a>
+  </footer>
+
+  <div id="cursor"><span></span><span></span><span></span><span></span></div>
+  <div class="grain"></div>
+  <div id="veil" class="on"></div>
+  <script type="module" src="/src/chi.js"></script>
 </body>
 </html>

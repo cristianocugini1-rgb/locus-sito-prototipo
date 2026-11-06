@@ -90,6 +90,8 @@ body.locked { overflow: hidden; }
   transition: background .6s, color .6s;
 }
 .go:hover { background: var(--crema); color: var(--nero); }
+.gos { display: flex; gap: 14px; margin-top: 40px; }
+.gos .go { margin-top: 0; }
 
 /* ingresso */
 #gate {
