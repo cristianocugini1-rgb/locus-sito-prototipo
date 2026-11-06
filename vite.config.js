@@ -9,6 +9,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         chiSiamo: resolve(__dirname, 'chi-siamo.html'),
+        testAudio: resolve(__dirname, 'test-audio.html'),
       },
     },
   },
