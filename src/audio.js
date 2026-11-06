@@ -211,14 +211,27 @@ export class Ambient {
   }
 
   // per quando la scheda va in secondo piano
-  duck(hidden) {
-    if (!this.ctx || this.muted) return;
-    this.master.gain.setTargetAtTime(hidden ? 0 : 0.7, this.ctx.currentTime, hidden ? 0.5 : 1.2);
+  // quando si passa a un'altra scheda, finestra o programma: sfuma e si ferma; al ritorno riparte piano
+  duck(away) {
+    if (!this.ctx || this.leaving) return;
+    const g = this.master.gain;
+    const t = this.ctx.currentTime;
+    clearTimeout(this._suspendTimer);
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t);
+    if (away) {
+      g.setTargetAtTime(0, t, 0.3);
+      this._suspendTimer = setTimeout(() => this.ctx.suspend(), 1600);
+    } else {
+      this.ctx.resume();
+      g.setTargetAtTime(this.muted ? 0 : 0.7, t, 1.0);
+    }
   }
 
   // dissoluzione: il suono secco sparisce per primo, resta la coda del riverbero che si spegne
   dissolve(seconds = 3.6) {
     if (!this.ctx) return Promise.resolve();
+    this.leaving = true;
     const t = this.ctx.currentTime;
     this.dry.gain.cancelScheduledValues(t);
     this.dry.gain.setTargetAtTime(0, t, seconds * 0.18);

@@ -484,6 +484,8 @@ soundBtn.addEventListener('click', () => {
   soundBtn.classList.toggle('on', !m);
 });
 document.addEventListener('visibilitychange', () => audio.duck(document.hidden));
+addEventListener('blur', () => audio.duck(true));
+addEventListener('focus', () => { if (!document.hidden) audio.duck(false); });
 
 // uscita verso un'altra pagina: velo scuro e musica che si dissolve
 document.querySelectorAll('[data-dissolve]').forEach((a) => {
