@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Locus · Usciamo dalle bolle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div id="scroll"></div>
+
+  <div class="ui">
+    <!-- apertura -->
+    <section class="layer hero" id="l-hero">
+      <h1 class="title">Usciamo<br />dalle bolle.</h1>
+      <p class="hint" id="hint">tocca la bolla, oppure scorri</p>
+    </section>
+
+    <!-- i tre anelli -->
+    <section class="layer ring-label" id="l-r1">
+      <h2 class="title">Il media.</h2>
+      <p class="sub">Un problema dei giovani, misurato su Parma.</p>
+    </section>
+    <section class="layer ring-label" id="l-r2">
+      <h2 class="title">Gli eventi.</h2>
+      <p class="sub">La Grande Bolla. Il Giovedì del Locus.</p>
+    </section>
+    <section class="layer ring-label" id="l-r3">
+      <h2 class="title">La bolla.</h2>
+      <p class="sub">Le persone che la abitano.</p>
+    </section>
+
+    <!-- nastro di foto -->
+    <section class="layer gallery-label" id="l-gal">
+      <span class="fascetta">Succede a Parma.</span>
+    </section>
+
+    <!-- il Battistero di grani -->
+    <section class="layer batt-label" id="l-batt">
+      <h2 class="title small">Il nostro<br />posto.</h2>
+      <p class="hint">passaci sopra, toccalo</p>
+    </section>
+
+    <!-- chiusura -->
+    <section class="layer closing" id="l-end">
+      <p class="motto">trova il tuo posto</p>
+      <a class="go" href="chi-siamo.html" data-dissolve>chi siamo</a>
+    </section>
+  </div>
+
+  <!-- ingresso: serve anche ad accendere l'audio -->
+  <div id="gate">
+    <div class="mirino"><span></span><span></span><span></span><span></span><b>locus</b></div>
+    <button id="enter">entra</button>
+    <p class="note">con il suono acceso</p>
+  </div>
+
+  <button id="sound" aria-label="suono"><i></i><i></i><i></i><i></i></button>
+  <div id="cursor"><span></span><span></span><span></span><span></span></div>
+  <div class="grain"></div>
+  <div id="veil"></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
