@@ -422,17 +422,17 @@ const cards = PHOTOS.map((src, i) => {
           float k = 1.0 - uFocus;
           float dy = wp.y - cameraPosition.y;
           float dx = wp.x - cameraPosition.x;
-          wp.z -= (dy * dy * 0.032 + dx * dx * 0.008) * k;          // il nastro si curva come un rullo
+          wp.z -= (dy * dy * 0.015 + dx * dx * 0.004) * k;          // il nastro si curva come un rullo
           // pieghe di stoffa: tre onde sovrapposte, sempre vive e più forti quando si corre
           float v = abs(uVel);
           float w1 = sin(wp.y * 0.95 + wp.x * 0.35 + uTime * 1.5);
           float w2 = sin(wp.y * 2.1 - wp.x * 0.9 - uTime * 1.1);
           float w3 = sin(wp.x * 1.5 + wp.y * 0.4 + uTime * 0.8);
           float fold = w1 * 0.65 + w2 * 0.3 + w3 * 0.25;
-          float amp = (0.1 + v * 1.25) * k;
+          float amp = (0.05 + v * 0.55) * k;
           wp.z += fold * amp;
-          wp.x += cos(wp.y * 0.7 + uTime) * uVel * 0.3 * k;
-          wp.y -= uVel * 0.25 * sin(wp.x * 0.5 + uTime * 0.6) * k;
+          wp.x += cos(wp.y * 0.7 + uTime) * uVel * 0.14 * k;
+          wp.y -= uVel * 0.12 * sin(wp.x * 0.5 + uTime * 0.6) * k;
           vShade = (w1 * 0.9 * 0.95 + w2 * 0.3 * 2.1) * amp;      // pendenza: fa il riflesso della seta
           gl_Position = projectionMatrix * viewMatrix * wp;
         }`,
@@ -449,7 +449,7 @@ const cards = PHOTOS.map((src, i) => {
           vec2 uv = cover((vUv - 0.5) * (1.0 - uHover * 0.07) + 0.5);
           float sh = uVel * 0.005;
           vec3 c = vec3(texture2D(uTex, uv + vec2(0.0, sh)).r, texture2D(uTex, uv).g, texture2D(uTex, uv - vec2(0.0, sh)).b);
-          float light = clamp(vShade * 0.6, -0.35, 0.35);
+          float light = clamp(vShade * 1.0, -0.28, 0.28);
           c *= 0.95 + light;                                          // pieghe in luce e in ombra
           c += vec3(0.12, 0.05, 0.02) * max(light, 0.0);             // lucido caldo della seta
           vec2 e = smoothstep(0.0, 0.012, vUv) * smoothstep(0.0, 0.012, 1.0 - vUv);
