@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -42,8 +41,29 @@ const bg = new THREE.Color('#140404');
 scene.background = bg;
 scene.fog = new THREE.Fog(bg, 10, 44);
 
+// studio fotografico virtuale: fondo scuro e strisce di luce calda, così il vetro ha riflessi netti
 const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+function studioEnv() {
+  const s = new THREE.Scene();
+  s.background = new THREE.Color('#060101');
+  const light = (w, h, color, k, pos) => {
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, h),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(k), side: THREE.DoubleSide })
+    );
+    m.position.set(...pos);
+    m.lookAt(0, 0, 0);
+    s.add(m);
+  };
+  light(7, 1.1, '#ffe4c8', 4.5, [0, 5, 2.5]);   // softbox in alto
+  light(0.5, 7, '#ffffff', 7, [-5, 0, 3]);      // striscia a sinistra
+  light(0.5, 7, '#ffd2a8', 5, [5, 0.5, 1.5]);   // striscia a destra, più calda
+  light(1.4, 1.4, '#ffffff', 10, [2.2, 2.2, 5]); // punto luce frontale
+  light(4, 3, '#ff5a2a', 1.4, [0, -1, -6]);     // controluce arancio
+  light(12, 12, '#3a0806', 0.7, [0, -5, 0]);    // pavimento rosso che rimbalza
+  return pmrem.fromScene(s, 0).texture;
+}
+scene.environment = studioEnv();
 
 const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
 camera.position.set(0, 0, 9);
@@ -56,9 +76,12 @@ const rimLight = new THREE.PointLight('#ff2a10', 40, 30);
 rimLight.position.set(-4, -2, -3);
 scene.add(rimLight);
 
+// antialiasing anche sugli effetti: senza, i bordi escono a scalini
 const composer = new EffectComposer(renderer);
+composer.renderTarget1.samples = 4;
+composer.renderTarget2.samples = 4;
 composer.addPass(new RenderPass(scene, camera));
-const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.55, 0.75, 0.9);
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.45, 0.45, 0.9);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
 
@@ -105,30 +128,60 @@ function makeL() {
   s.lineTo(-0.4, 0.26);
   s.lineTo(-0.4, 0);
   const geo = new THREE.ExtrudeGeometry(s, {
-    depth: 0.75, bevelEnabled: true, bevelThickness: 0.09, bevelSize: 0.06, bevelSegments: 5, curveSegments: 16,
+    depth: 0.7, bevelEnabled: true, bevelThickness: 0.14, bevelSize: 0.085, bevelSegments: 12, curveSegments: 48,
   });
   geo.center();
   geo.scale(0.5, 0.5, 0.5);
   return geo;
 }
+// smalto rosso lucido: colore pieno, riflessi netti dello studio, una velatura iridescente appena accennata
 const lMat = new THREE.MeshPhysicalMaterial({
-  color: '#c21d0e',
-  roughness: 0.1,
-  transmission: 0.82,
-  thickness: 1.4,
-  ior: 1.5,
-  attenuationColor: COL.rosso,
-  attenuationDistance: 0.7,
+  color: '#8a0603',
+  metalness: 0,
+  roughness: 0.22,
   clearcoat: 1,
-  clearcoatRoughness: 0.05,
-  envMapIntensity: 1.3,
+  clearcoatRoughness: 0.03,
+  specularIntensity: 1,
+  specularColor: new THREE.Color('#ffd9c8'),
+  sheen: 0.4,
+  sheenColor: new THREE.Color('#ff5030'),
+  sheenRoughness: 0.4,
+  iridescence: 0.12,
+  iridescenceIOR: 1.4,
+  envMapIntensity: 1.5,
 });
 const lMesh = new THREE.Mesh(makeL(), lMat);
 hero.add(lMesh);
 
+// controluce: un alone caldo dietro la L, che il vetro raccoglie e accende di rosso
+const glowUni = { uBg: { value: new THREE.Color('#140404') }, uTime: { value: 0 } };
+const backGlow = new THREE.Mesh(
+  new THREE.PlaneGeometry(9, 9),
+  new THREE.ShaderMaterial({
+    uniforms: glowUni,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `
+      uniform vec3 uBg; uniform float uTime; varying vec2 vUv;
+      void main(){
+        vec2 q = vUv - 0.5;
+        float r = length(q * vec2(1.0, 0.92));
+        float core = 1.0 - smoothstep(0.0, 0.22, r);
+        float halo = 1.0 - smoothstep(0.02, 0.5, r);
+        vec3 warm = mix(vec3(0.30, 0.025, 0.012), vec3(0.95, 0.30, 0.10), core * core);
+        float breathe = 0.9 + 0.1 * sin(uTime * 0.7);
+        gl_FragColor = vec4(warm * breathe * halo * halo * 0.55, 1.0);
+      }`,
+  })
+);
+backGlow.position.z = -1.6;
+hero.add(backGlow);
+
 // gli angoli del mirino, come nel logo
 const brackets = new THREE.Group();
-const brMat = new THREE.MeshBasicMaterial({ color: COL.crema.clone().multiplyScalar(1.6) });
+const brMat = new THREE.MeshBasicMaterial({ color: COL.crema.clone().multiplyScalar(1.25) });
 const corners = [];
 [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(([sx, sy]) => {
   const g = new THREE.Group();
@@ -174,7 +227,7 @@ const bubble = new THREE.Mesh(
         vec3 c = irid(f*1.3 + vP.y*0.12 + uTime*0.04);
         c = mix(c, vec3(1.0, 0.72, 0.55), 0.35);          // scaldata verso il crema
         vec3 l = normalize(vec3(0.5, 0.7, 0.6));
-        float spec = pow(max(dot(reflect(-l, vN), vV), 0.0), 140.0);
+        float spec = pow(max(dot(reflect(-l, vN), vV), 0.0), 420.0) * 1.6 + pow(max(dot(reflect(-normalize(vec3(-0.6, 0.2, 0.7)), vN), vV), 0.0), 900.0) * 0.8;
         float a = (f * 0.75 + 0.03) * (1.0 - uPop);
         gl_FragColor = vec4(c * (0.6 + f) + spec * 1.8, a + spec*(1.0-uPop));
       }`,
@@ -268,14 +321,14 @@ const PW = 3.6, PH = 4.5, GAP = 4.5;
 
 function placeholder(i) {
   const c = document.createElement('canvas');
-  c.width = 540; c.height = 675;
+  c.width = 1080; c.height = 1350;
   const g = c.getContext('2d');
-  const grd = g.createLinearGradient(0, 0, 540, 675);
+  const grd = g.createLinearGradient(0, 0, 1080, 1350);
   grd.addColorStop(0, i % 2 ? '#4b1413' : '#800200');
   grd.addColorStop(1, '#140404');
-  g.fillStyle = grd; g.fillRect(0, 0, 540, 675);
-  g.fillStyle = '#F5E4CB'; g.font = '64px Anton, sans-serif';
-  g.fillText('FOTO ' + (i + 1) + '.', 44, 620);
+  g.fillStyle = grd; g.fillRect(0, 0, 1080, 1350);
+  g.fillStyle = '#F5E4CB'; g.font = '128px Anton, sans-serif';
+  g.fillText('FOTO ' + (i + 1) + '.', 88, 1240);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
@@ -294,7 +347,7 @@ const cards = PHOTOS.map((src, i) => {
   };
   loader.load(src, (t) => {
     t.colorSpace = THREE.SRGBColorSpace;
-    t.anisotropy = 4;
+    t.anisotropy = renderer.capabilities.getMaxAnisotropy();
     u.uTex.value = t;
     u.uImgAspect.value = t.image.width / t.image.height;
   }, undefined, () => {});
@@ -470,8 +523,12 @@ const layers = {
 };
 const goLink = document.querySelector('.go');
 
+// ?muto nell'indirizzo: il sito parte senza suono (serve per le prove)
+const MUTE = new URLSearchParams(location.search).has('muto');
 $('enter').addEventListener('click', () => {
+  if (MUTE) audio.muted = true;
   audio.start();
+  if (MUTE) { soundBtn.classList.add('off'); }
   gate.classList.add('out');
   soundBtn.classList.add('on');
   document.body.classList.remove('locked');
@@ -580,9 +637,30 @@ function showLayer(el, v) {
 /* ciclo                                                               */
 /* ------------------------------------------------------------------ */
 const clock = new THREE.Clock();
+
+// qualità adattiva: se il computer fatica, si abbassa la risoluzione; se c'è margine, si rialza
+const PR_MAX = renderer.getPixelRatio();
+let pr = PR_MAX, qAcc = 0, qFrames = 0, qGood = 0;
+function setPR(v) {
+  pr = v;
+  renderer.setPixelRatio(pr);
+  composer.setPixelRatio(pr);
+  composer.setSize(innerWidth, innerHeight);
+  bUni.uPixel.value = pr;
+}
+function adaptQuality(dt) {
+  if (document.hidden) return;
+  qAcc += dt; qFrames++;
+  if (qAcc < 1) return;
+  const fps = qFrames / qAcc;
+  qAcc = 0; qFrames = 0;
+  if (fps < 45 && pr > 0.75) { setPR(Math.max(0.75, pr - 0.25)); qGood = 0; }
+  else if (fps > 57 && pr < PR_MAX && ++qGood >= 3) { setPR(Math.min(PR_MAX, pr + 0.25)); qGood = 0; }
+}
 let prevCamZ = 9, vel = 0, hot = false;
 
 function frame(time) {
+  if (import.meta.env.DEV) { window.__frames = (window.__frames || 0) + 1; }
   lenis.raf(time);
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
@@ -598,6 +676,8 @@ function frame(time) {
   camera.lookAt(mouseS.x * 0.15, mouseS.y * 0.1, cz - 10);
   camera.rotateZ(Math.sin(flight * Math.PI * 2) * 0.09 * Math.sin(flight * Math.PI));
   scene.fog.color.copy(bgAt(p));
+  glowUni.uBg.value.copy(bg);
+  glowUni.uTime.value = clock.elapsedTime;
 
   /* 1. bolla e L */
   hero.visible = cz > -9;
@@ -662,7 +742,7 @@ function frame(time) {
     showLayer(layers.r[i], vis);
     if (d < 16 && d > -2) mood = r.mood;
   });
-  bloom.strength = 0.55 + RINGS.reduce((s, r) => s + r.flash, 0) * 0.35;
+  bloom.strength = 0.45 + RINGS.reduce((s, r) => s + r.flash, 0) * 0.35;
 
   /* 3. nastro di seta */
   gallery.visible = p > 0.42 && p < 0.8;
@@ -731,14 +811,17 @@ function frame(time) {
   cursor.classList.toggle('hot', hot || !!overLink);
 
   prevCamZ = cz;
+  adaptQuality(dt);
   composer.render();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+if (import.meta.env.DEV) window.__dbg = { scene, renderer, composer, backGlow, lMesh, lMat, bubble, setPR };
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
   composer.setSize(innerWidth, innerHeight);
+  bloom.resolution.set(innerWidth / 2, innerHeight / 2);
 });
