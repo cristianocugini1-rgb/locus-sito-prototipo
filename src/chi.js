@@ -232,8 +232,8 @@ function frame(time) {
     p.img.style.transform = `scale(1.18) translateY(${(c * p.k * 100).toFixed(2)}%)`;
   }
 
-  cur.x = lerp(cur.x, cur.tx, 0.22);
-  cur.y = lerp(cur.y, cur.ty, 0.22);
+  cur.x = lerp(cur.x, cur.tx, 0.42);
+  cur.y = lerp(cur.y, cur.ty, 0.42);
   cursor.style.transform = `translate(${cur.x}px, ${cur.y}px)`;
   cursor.classList.toggle('hot', !!document.querySelector('a:hover, button:hover, .card:hover'));
 

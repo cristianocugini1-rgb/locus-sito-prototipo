@@ -139,6 +139,13 @@ figcaption { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1
   border: 1px solid rgba(245, 228, 203, .12);
   transform-style: preserve-3d; transition: transform .5s var(--ease), border-color .5s;
 }
+.card { position: relative; overflow: hidden; isolation: isolate; }
+.card .ph {
+  position: absolute; inset: 0; z-index: -1; background-size: cover; background-position: center;
+  opacity: .38; transform: scale(1.08); transition: opacity .8s, transform 1.4s var(--ease); filter: saturate(.8);
+}
+.card::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(20, 4, 4, .2) 0%, rgba(20, 4, 4, .92) 72%); }
+.card:hover .ph { opacity: .6; transform: scale(1); }
 .card.hot { background: linear-gradient(160deg, rgba(253, 115, 3, .55), rgba(128, 2, 0, .7)); }
 .card:hover { border-color: rgba(245, 228, 203, .4); }
 .card h3 { font-family: 'Anton', sans-serif; font-weight: 400; text-transform: uppercase; font-size: 40px; line-height: .95; margin: 0 0 16px; }

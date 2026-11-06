@@ -182,7 +182,7 @@ hero.add(backGlow);
 
 // gli angoli del mirino, come nel logo
 const brackets = new THREE.Group();
-const brMat = new THREE.MeshBasicMaterial({ color: COL.crema.clone().multiplyScalar(1.25) });
+const brMat = new THREE.MeshBasicMaterial({ color: new THREE.Color('#e3261a').multiplyScalar(1.35) });
 const corners = [];
 [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(([sx, sy]) => {
   const g = new THREE.Group();
@@ -882,8 +882,8 @@ function frame(time) {
   if (Math.random() < 0.1) audio.setMood(mood, lenis.velocity);
 
   /* cursore */
-  cur.x = lerp(cur.x, cur.tx, 0.22);
-  cur.y = lerp(cur.y, cur.ty, 0.22);
+  cur.x = lerp(cur.x, cur.tx, 0.42);
+  cur.y = lerp(cur.y, cur.ty, 0.42);
   cursor.style.transform = `translate(${cur.x}px, ${cur.y}px)`;
   const overLink = document.querySelector('a:hover, button:hover');
   cursor.classList.toggle('hot', hot || !!overLink);
