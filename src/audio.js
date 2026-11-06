@@ -23,12 +23,27 @@ export class Ambient {
 
   start() {
     if (this.ctx) return;
+    // su iPhone fa suonare il sito anche con il tasto silenzioso attivo
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
     const ctx = (this.ctx = new (window.AudioContext || window.webkitAudioContext)());
+    if (ctx.state === 'suspended') ctx.resume();
     const now = ctx.currentTime;
+
+    // compressore finale: porta il volume a un livello udibile anche dalle casse di un portatile
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -24;
+    comp.knee.value = 18;
+    comp.ratio.value = 4;
+    comp.attack.value = 0.02;
+    comp.release.value = 0.4;
+    const makeup = ctx.createGain();
+    makeup.gain.value = 2.6;
+    comp.connect(makeup).connect(ctx.destination);
+    this.out = makeup;
 
     this.master = ctx.createGain();
     this.master.gain.value = 0;
-    this.master.connect(ctx.destination);
+    this.master.connect(comp);
 
     // riverbero: risposta all'impulso generata, 6 secondi di coda
     this.reverb = ctx.createConvolver();
@@ -44,7 +59,7 @@ export class Ambient {
     // filtro che dà il colore: più chiuso è, più il suono è ovattato
     this.filter = ctx.createBiquadFilter();
     this.filter.type = 'lowpass';
-    this.filter.frequency.value = 700;
+    this.filter.frequency.value = 1300;
     this.filter.Q.value = 0.6;
     this.filter.connect(this.dry);
     this.filter.connect(this.reverb);
@@ -52,20 +67,20 @@ export class Ambient {
     const lfo = ctx.createOscillator();
     lfo.frequency.value = 0.045;
     const lfoAmt = ctx.createGain();
-    lfoAmt.gain.value = 260;
+    lfoAmt.gain.value = 420;
     lfo.connect(lfoAmt).connect(this.filter.frequency);
     lfo.start();
 
     // cinque voci, ognuna con due oscillatori leggermente stonati tra loro
     this.voices = CHORDS[0].map((note) => {
       const g = ctx.createGain();
-      g.gain.value = 0.045;
+      g.gain.value = 0.075;
       const a = ctx.createOscillator();
       const b = ctx.createOscillator();
       a.type = 'triangle';
       b.type = 'sawtooth';
-      a.frequency.value = mtof(note);
-      b.frequency.value = mtof(note);
+      a.frequency.value = mtof(note + 12);
+      b.frequency.value = mtof(note + 12);
       a.detune.value = -6;
       b.detune.value = 7;
       const bg = ctx.createGain();
@@ -81,9 +96,9 @@ export class Ambient {
     // basso morbido
     this.sub = ctx.createOscillator();
     this.sub.type = 'sine';
-    this.sub.frequency.value = mtof(CHORDS[0][0] - 12);
+    this.sub.frequency.value = mtof(CHORDS[0][0]);
     const subG = ctx.createGain();
-    subG.gain.value = 0.12;
+    subG.gain.value = 0.1;
     this.sub.connect(subG).connect(this.dry);
     this.sub.start();
 
@@ -114,10 +129,10 @@ export class Ambient {
     const ch = CHORDS[this.chordIdx];
     const t = ctx.currentTime;
     this.voices.forEach((v, i) => {
-      v.a.frequency.setTargetAtTime(mtof(ch[i]), t, 1.4);
-      v.b.frequency.setTargetAtTime(mtof(ch[i]), t, 1.6);
+      v.a.frequency.setTargetAtTime(mtof(ch[i] + 12), t, 1.4);
+      v.b.frequency.setTargetAtTime(mtof(ch[i] + 12), t, 1.6);
     });
-    this.sub.frequency.setTargetAtTime(mtof(ch[0] - 12), t, 1.8);
+    this.sub.frequency.setTargetAtTime(mtof(ch[0]), t, 1.8);
   }
 
   _bellLoop() {
@@ -126,7 +141,7 @@ export class Ambient {
     this._bellTimer = setTimeout(() => this._bellLoop(), 2600 + Math.random() * 4800);
   }
 
-  bell(gain = 0.05) {
+  bell(gain = 0.09) {
     if (!this.ctx || !this.on) return;
     const ctx = this.ctx;
     const t = ctx.currentTime;
@@ -180,7 +195,7 @@ export class Ambient {
   // colore del suono per sezione, e un po' di apertura con la velocità di scroll
   setMood(brightness, velocity = 0) {
     if (!this.ctx) return;
-    const f = 450 + brightness * 1400 + Math.min(Math.abs(velocity), 40) * 18;
+    const f = 1000 + brightness * 1800 + Math.min(Math.abs(velocity), 40) * 25;
     this.filter.frequency.setTargetAtTime(f, this.ctx.currentTime, 0.8);
   }
 

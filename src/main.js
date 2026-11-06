@@ -514,8 +514,8 @@ let popped = false, popT = 0, wobbleHot = 0;
 function pop() {
   if (popped) return;
   popped = true;
-  audio.bell(0.08);
-  setTimeout(() => audio.bell(0.05), 140);
+  audio.bell(0.12);
+  setTimeout(() => audio.bell(0.08), 140);
 }
 
 addEventListener('click', (e) => {
@@ -541,7 +541,7 @@ addEventListener('keydown', (e) => { if (e.key === 'Escape' && focused) unfocus(
 function focusCard(m) {
   focused = m;
   lenis.stop();
-  audio.bell(0.06);
+  audio.bell(0.1);
 }
 function unfocus() {
   focused = null;
