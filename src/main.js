@@ -3,6 +3,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import Lenis from 'lenis';
 import { Ambient } from './audio.js';
 
@@ -76,14 +77,14 @@ const rimLight = new THREE.PointLight('#ff2a10', 40, 30);
 rimLight.position.set(-4, -2, -3);
 scene.add(rimLight);
 
-// antialiasing anche sugli effetti: senza, i bordi escono a scalini
 const composer = new EffectComposer(renderer);
-composer.renderTarget1.samples = 4;
-composer.renderTarget2.samples = 4;
 composer.addPass(new RenderPass(scene, camera));
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.45, 0.45, 0.9);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
+// antialiasing alla fine della catena: senza, i bordi escono a scalini.
+// (l'antialiasing multisample va in conflitto con il bagliore su alcune schede video e fa sparire la scena)
+composer.addPass(new SMAAPass(innerWidth * renderer.getPixelRatio(), innerHeight * renderer.getPixelRatio()));
 
 /* ------------------------------------------------------------------ */
 /* texture tonda per i grani                                           */
@@ -648,8 +649,9 @@ function setPR(v) {
   composer.setSize(innerWidth, innerHeight);
   bUni.uPixel.value = pr;
 }
+const FIXED_Q = new URLSearchParams(location.search).has('fisso');
 function adaptQuality(dt) {
-  if (document.hidden) return;
+  if (document.hidden || FIXED_Q) return;
   qAcc += dt; qFrames++;
   if (qAcc < 1) return;
   const fps = qFrames / qAcc;
