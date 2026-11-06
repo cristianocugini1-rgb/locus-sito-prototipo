@@ -182,7 +182,7 @@ hero.add(backGlow);
 
 // gli angoli del mirino, come nel logo
 const brackets = new THREE.Group();
-const brMat = new THREE.MeshBasicMaterial({ color: new THREE.Color('#e3261a').multiplyScalar(1.35) });
+const brMat = lMat; // stesso smalto rosso della L
 const corners = [];
 [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(([sx, sy]) => {
   const g = new THREE.Group();
