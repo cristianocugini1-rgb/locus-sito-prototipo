@@ -33,6 +33,7 @@ body.locked { overflow: hidden; }
   letter-spacing: .005em;
 }
 .title.small { font-size: clamp(40px, 5.5vw, 90px); }
+.hero-title { line-height: 1.04; }
 .sub {
   font-family: 'EB Garamond', serif;
   font-style: italic;

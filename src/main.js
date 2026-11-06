@@ -555,9 +555,10 @@ const batt = new THREE.Points(bGeo, new THREE.ShaderMaterial({
       vec4 wp = modelMatrix * vec4(p, 1.0);
       vec2 d = wp.xy - uMouse.xy;
       float dist = length(d);
-      float push = smoothstep(1.7, 0.0, dist);
-      wp.xy += normalize(d + 1e-4) * push * 0.9;
-      wp.z  += push * 0.9;
+      float push = 1.0 - smoothstep(0.0, 0.85, dist);
+      push *= push;
+      wp.xy += normalize(d + 1e-4) * push * 0.5;
+      wp.z  += push * 0.45;
       wp.xyz += normalize(wp.xyz - uCenter + 1e-4) * uBurst * (1.0 + aSeed * 4.0);
       vec4 mv = viewMatrix * wp;
       gl_Position = projectionMatrix * mv;
@@ -576,6 +577,55 @@ const batt = new THREE.Points(bGeo, new THREE.ShaderMaterial({
 }));
 batt.position.z = battZ;
 scene.add(batt);
+
+// scintille: quando il puntatore esce dal Battistero, una manciata di grani schizza via.
+// Sono grani a parte, la struttura resta intera.
+const SP = 700;
+const spPos = new Float32Array(SP * 3), spVel = new Float32Array(SP * 3), spLife = new Float32Array(SP), spSeed = new Float32Array(SP);
+for (let i = 0; i < SP; i++) spSeed[i] = Math.random();
+const spGeo = new THREE.BufferGeometry();
+spGeo.setAttribute('position', new THREE.BufferAttribute(spPos, 3));
+spGeo.setAttribute('aLife', new THREE.BufferAttribute(spLife, 1));
+spGeo.setAttribute('aSeed', new THREE.BufferAttribute(spSeed, 1));
+const spUni = { uPixel: { value: renderer.getPixelRatio() } };
+const sparks = new THREE.Points(spGeo, new THREE.ShaderMaterial({
+  uniforms: spUni, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  vertexShader: `
+    attribute float aLife; attribute float aSeed; uniform float uPixel; varying float vL; varying float vS;
+    void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv;
+      gl_PointSize = (2.0 + aSeed * 2.6) * uPixel * (10.0 / -mv.z) * (0.4 + aLife * 0.6); vL = aLife; vS = aSeed; }`,
+  fragmentShader: `
+    varying float vL; varying float vS;
+    void main(){ if (vL <= 0.0) discard; float r = length(gl_PointCoord - 0.5); float a = 1.0 - smoothstep(0.0, 0.5, r);
+      vec3 c = mix(vec3(1.0, 0.86, 0.7), vec3(1.0, 0.55, 0.12), vS); gl_FragColor = vec4(c * 1.4, a * vL); }`,
+}));
+sparks.frustumCulled = false;
+scene.add(sparks);
+let spCursor = 0, wasInside = false;
+const lastInside = new THREE.Vector3(), mPrev = new THREE.Vector3(), mDir = new THREE.Vector3();
+function emitSparks(at, dir, n = 140) {
+  for (let k = 0; k < n; k++) {
+    const i = spCursor; spCursor = (spCursor + 1) % SP;
+    const r = new THREE.Vector3().randomDirection();
+    const speed = 1.2 + Math.random() * 3.2;
+    spPos[i * 3] = at.x + r.x * 0.15; spPos[i * 3 + 1] = at.y + r.y * 0.15; spPos[i * 3 + 2] = at.z + r.z * 0.15;
+    spVel[i * 3] = (dir.x * 0.9 + r.x * 0.7) * speed;
+    spVel[i * 3 + 1] = (dir.y * 0.9 + r.y * 0.7) * speed;
+    spVel[i * 3 + 2] = (r.z * 0.8 + 0.4) * speed;
+    spLife[i] = 0.7 + Math.random() * 0.3;
+  }
+}
+function updateSparks(dt) {
+  let alive = false;
+  for (let i = 0; i < SP; i++) {
+    if (spLife[i] <= 0) continue;
+    alive = true;
+    spLife[i] -= dt / 1.4;
+    spVel[i * 3] *= 0.965; spVel[i * 3 + 1] = spVel[i * 3 + 1] * 0.965 - 1.1 * dt; spVel[i * 3 + 2] *= 0.965;
+    spPos[i * 3] += spVel[i * 3] * dt; spPos[i * 3 + 1] += spVel[i * 3 + 1] * dt; spPos[i * 3 + 2] += spVel[i * 3 + 2] * dt;
+  }
+  if (alive) { spGeo.attributes.position.needsUpdate = true; spGeo.attributes.aLife.needsUpdate = true; }
+}
 
 /* ------------------------------------------------------------------ */
 /* scroll morbido, audio, interfaccia                                  */
@@ -863,10 +913,22 @@ function frame(time) {
     batt.rotation.x = mouseS.y * 0.12;
     ray.setFromCamera(mouse, camera);
     if (pointerSeen && ray.ray.intersectPlane(battPlane, tmpV)) {
-      bUni.uMouse.value.lerp(tmpV, 0.2);
-      if (bUni.uForm.value > 0.6 && Math.abs(tmpV.x) < 3 && Math.abs(tmpV.y) < 4) hot = true;
+      bUni.uMouse.value.lerp(tmpV, 0.25);
+      mDir.subVectors(tmpV, mPrev);
+      mPrev.copy(tmpV);
+      const formed = bUni.uForm.value > 0.6 && bUni.uOpacity.value > 0.5;
+      const inside = formed && Math.abs(tmpV.x) < 2.45 && tmpV.y > -3.4 && tmpV.y < 3.5;
+      if (inside) { hot = true; lastInside.copy(tmpV); }
+      // appena il puntatore esce dalla struttura, i grani schizzano via nella direzione del movimento
+      if (wasInside && !inside && formed) {
+        if (mDir.lengthSq() < 1e-6) mDir.set(Math.sign(tmpV.x) || 1, 0, 0);
+        emitSparks(lastInside, mDir.normalize(), 150);
+        audio.bell(0.05);
+      }
+      wasInside = inside;
     }
   }
+  updateSparks(dt);
   showLayer(layers.batt, win(p, 0.79, 0.83, 0.9, 0.93));
 
   /* apertura e chiusura */
