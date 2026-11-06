@@ -41,7 +41,7 @@ export class Ambient {
     comp.attack.value = 0.02;
     comp.release.value = 0.4;
     const makeup = ctx.createGain();
-    makeup.gain.value = 2.6;
+    makeup.gain.value = 1.6;
     comp.connect(makeup).connect(ctx.destination);
     this.out = makeup;
 
