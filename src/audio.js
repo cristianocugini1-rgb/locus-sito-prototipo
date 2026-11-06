@@ -25,7 +25,11 @@ export class Ambient {
     if (this.ctx) return;
     // su iPhone fa suonare il sito anche con il tasto silenzioso attivo
     try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
-    const ctx = (this.ctx = new (window.AudioContext || window.webkitAudioContext)());
+    const AC = window.AudioContext || window.webkitAudioContext;
+    // 48 kHz fisso: alcune schede audio lavorano a 192 kHz e il riverbero diventerebbe troppo pesante
+    let c0;
+    try { c0 = new AC({ sampleRate: 48000, latencyHint: 'playback' }); } catch (e) { c0 = new AC(); }
+    const ctx = (this.ctx = c0);
     if (ctx.state === 'suspended') ctx.resume();
     const now = ctx.currentTime;
 
@@ -47,7 +51,7 @@ export class Ambient {
 
     // riverbero: risposta all'impulso generata, 6 secondi di coda
     this.reverb = ctx.createConvolver();
-    this.reverb.buffer = this._impulse(6, 2.6);
+    this.reverb.buffer = this._impulse(4.5, 2.6);
     this.wet = ctx.createGain();
     this.wet.gain.value = 0.55;
     this.reverb.connect(this.wet).connect(this.master);

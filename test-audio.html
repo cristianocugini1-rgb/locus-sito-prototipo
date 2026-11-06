@@ -31,12 +31,12 @@
         an.getFloatTimeDomainData(d);
         let m = 0; for (const v of d) m = Math.max(m, Math.abs(v));
         bar.style.width = Math.min(100, m * 100) + '%';
-        info.textContent = `stato audio: ${c.state}\nfrequenza: ${c.sampleRate} Hz\nlivello: ${(m * 100).toFixed(0)}%`;
+        info.textContent = `stato audio: ${c.state}\nfrequenza del sito: ${c.sampleRate} Hz\nlivello: ${(m * 100).toFixed(0)}%`;
         requestAnimationFrame(loop);
       })();
     }
     document.getElementById('tone').onclick = async () => {
-      ctx = ctx || new AudioContext();
+      ctx = ctx || new AudioContext({ sampleRate: 48000 });
       await ctx.resume();
       const o = ctx.createOscillator(), g = ctx.createGain();
       o.frequency.value = 440; g.gain.value = 0.3;
