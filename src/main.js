@@ -302,7 +302,7 @@ hero.add(drops);
 /* 2. I TRE ANELLI in cui si entra scorrendo                           */
 /* ------------------------------------------------------------------ */
 const RINGS = [
-  { z: -14, color: new THREE.Color('#ff3414'), metal: '#a8604a', mood: 0.35 },
+  { z: -14, color: new THREE.Color('#f2603f'), metal: '#a8604a', mood: 0.35, glow: 0.5 }, // il primo, più morbido: un rosso caldo, non aggressivo
   { z: -32, color: new THREE.Color('#ff8a24'), metal: '#c49058', mood: 0.7 },
   { z: -50, color: new THREE.Color('#ffe6c4'), metal: '#d6c6ae', mood: 0.5 },
 ];
@@ -343,11 +343,11 @@ RINGS.forEach((r, i) => {
   // anima incandescente
   const core = new THREE.Mesh(
     new THREE.TorusGeometry(R_RING, 0.03, 16, 480),
-    new THREE.MeshBasicMaterial({ color: r.color.clone().lerp(new THREE.Color('#ffffff'), 0.35).multiplyScalar(2.0), transparent: true })
+    new THREE.MeshBasicMaterial({ color: r.color.clone().lerp(new THREE.Color('#ffffff'), 0.35).multiplyScalar(2.0 * (r.glow || 1)), transparent: true })
   );
   // fascio e alone
-  const beam = new THREE.Mesh(new THREE.TorusGeometry(R_RING, 0.3, 48, 480), beamMat(r.color, 2.6, 0.85, i * 1.7));
-  const haze = new THREE.Mesh(new THREE.TorusGeometry(R_RING, 1.2, 32, 240), beamMat(r.color, 5.5, 0.2, i * 1.7 + 0.6));
+  const beam = new THREE.Mesh(new THREE.TorusGeometry(R_RING, 0.3, 48, 480), beamMat(r.color, 2.6, 0.85 * (r.glow || 1), i * 1.7));
+  const haze = new THREE.Mesh(new THREE.TorusGeometry(R_RING, 1.2, 32, 240), beamMat(r.color, 5.5, 0.2 * (r.glow || 1), i * 1.7 + 0.6));
   // ghiera di metallo spazzolato, piatta come quella di un obiettivo
   const metalMat = new THREE.MeshPhysicalMaterial({
     color: r.metal, metalness: 1, roughness: 0.3, anisotropy: 0.8, clearcoat: 0.25, envMapIntensity: 1.3, transparent: true,
@@ -875,8 +875,8 @@ function frame(time) {
 
   /* 2. anelli */
   let mood = 0.3;
-  // all'apertura si vedono solo la L e la bolla: gli anelli si accendono quando si comincia a scorrere
-  const appear = ease(seg(p, 0.015, 0.09));
+  // all'apertura si vedono solo la L e la bolla: gli anelli si accendono mentre la L se ne va
+  const appear = ease(seg(p, 0.11, 0.2));
   RINGS.forEach((r, i) => {
     r.group.visible = appear > 0.002;
     r.core.material.opacity = appear;
