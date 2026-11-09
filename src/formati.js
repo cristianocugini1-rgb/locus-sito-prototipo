@@ -9,6 +9,7 @@ export const FORMATI = {
     kicker: 'Il primo sabato del mese',
     title: 'Il Meet Up',
     lead: "La porta d'ingresso di Locus: un appuntamento al mese, aperto a tutti.",
+    about: "Il Meet Up è l'appuntamento da cui si entra in Locus. Il primo sabato del mese, aperto a tutti: ci si conosce, si lavora ai tavoli insieme ai soci e chi vuole resta.",
     cover: img('meetup.jpg'),
     stepsTitle: 'Come funziona',
     steps: [
@@ -29,6 +30,7 @@ export const FORMATI = {
     kicker: '150 persone a serata',
     title: 'La Grande Bolla',
     lead: 'Conversazioni urbane per uscire dalla propria bolla. Una serata in cinque tempi.',
+    about: 'La Grande Bolla è una serata di conversazioni urbane. Persone che di solito non si incontrano si siedono allo stesso tavolo, discutono un tema, ascoltano tre ospiti sul palco e poi prendono il microfono.',
     cover: img('ospiti-bolla.jpg'),
     stepsTitle: 'Una serata in cinque tempi',
     steps: [
@@ -58,13 +60,15 @@ export const FORMATI = {
     kicker: 'Da novembre 2026',
     title: 'Speed Debate',
     lead: 'Conoscersi discutendo, dopocena, a tavolini da due.',
+    about: 'Lo Speed Debate è un modo di conoscersi discutendo. Dopocena, a tavolini da due: a ogni round cambi persona e prendi posizione su una domanda.',
     cover: img('evento-tavoli.jpg'),
+    numbersList: true,
     numbersTitle: 'Le regole',
     numbers: [
-      ['3', 'round da 15 minuti, ognuno con una persona nuova'],
-      ['1', 'carta per round, con una domanda su cui prendere posizione'],
       ['0', "telefoni in vista: all'ingresso li mascheriamo"],
+      ['1', 'carta per round, con una domanda su cui prendere posizione'],
       ['2', 'ospiti con idee opposte si sfidano sul palco, alla fine'],
+      ['3', 'round da 15 minuti, ognuno con una persona nuova'],
     ],
     photos: [img('evento-tavoli.jpg'), img('serata-schermo.jpg')],
     source: 'Fonte: Locus, presentazione agli stakeholder, ottobre 2026',
@@ -75,6 +79,7 @@ export const FORMATI = {
     kicker: 'Serate aperte',
     title: 'Il Giovedì del Locus',
     lead: 'Una serata senza fretta, per conoscersi e ritrovarsi. Musica, ospiti, e tante birrette insieme.',
+    about: 'Il Giovedì del Locus è la serata più informale: musica, ospiti e birre, per conoscersi e ritrovarsi senza fretta.',
     cover: img('giovedi-talk-drinks.jpg'),
     dates: [
       ['19 marzo 2026', 'Il primo Giovedì del Locus', 'La serata del lancio. Borgo Santa Brigida 5A.'],

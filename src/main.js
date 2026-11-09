@@ -6,6 +6,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import Lenis from 'lenis';
 import { Ambient } from './audio.js';
+import { storia, daStoria } from './storia.js';
 
 /* ------------------------------------------------------------------ */
 /* utilità                                                             */
@@ -679,12 +680,15 @@ $('enter').addEventListener('click', () => {
   audio.start();
   if (MUTE) { soundBtn.classList.add('off'); }
   try { localStorage.setItem('locus-suono', MUTE ? 'off' : 'on'); } catch (e) {}
+  apri();
+});
+function apri() {
   gate.classList.add('out');
   document.body.classList.add('entered');
   soundBtn.classList.add('on');
   document.body.classList.remove('locked');
   lenis.start();
-});
+}
 soundBtn.addEventListener('click', () => {
   const m = !audio.muted;
   audio.setMuted(m);
@@ -702,6 +706,7 @@ document.querySelectorAll('[data-dissolve]').forEach((a) => {
     e.preventDefault();
     veil.classList.add('on');
     lenis.stop();
+    ricorda();
     audio.dissolve(3.6).then(() => { location.href = a.href; });
   });
 });
@@ -996,6 +1001,38 @@ function frame(time) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+/* ------------------------------------------------------------------ */
+/* tornare indietro: si riprende dal punto in cui si era, senza ripassare dall'ingresso */
+/* ------------------------------------------------------------------ */
+history.scrollRestoration = 'manual';
+function ricorda() { try { sessionStorage.setItem('locus-home', String(lenis.scroll)); } catch (e) {} }
+addEventListener('pagehide', ricorda);
+storia({ prima: ricorda });
+function riprendi(y) {
+  if (y > 0) { popped = true; popT = 1; }
+  apri();
+  lenis.scrollTo(y, { immediate: true, force: true });
+  // il browser accende il suono solo dopo un gesto: al primo tocco, se era acceso
+  let want = 'on';
+  try { want = localStorage.getItem('locus-suono') || 'on'; } catch (e) {}
+  if (MUTE || want === 'off') { audio.muted = true; soundBtn.classList.add('off'); }
+  const gesto = () => {
+    removeEventListener('pointerdown', gesto); removeEventListener('keydown', gesto);
+    if (!audio.ctx) audio.start(); else audio.duck(false);
+  };
+  addEventListener('pointerdown', gesto); addEventListener('keydown', gesto);
+}
+let saved = null;
+try { saved = sessionStorage.getItem('locus-home'); } catch (e) {}
+if (daStoria() && saved !== null) riprendi(Number(saved) || 0);
+// pagina ripresa dalla memoria del browser: tutto è com'era, basta togliere il velo e far ripartire lo scroll
+addEventListener('pageshow', (e) => {
+  if (!e.persisted) return;
+  veil.classList.remove('on');
+  if (gate.classList.contains('out')) lenis.start();
+  if (audio.ctx) audio.duck(false);
+});
+
 if (import.meta.env.DEV) window.__dbg = { scene, renderer, composer, backGlow, lMesh, lMat, bubble, setPR };
 
 addEventListener('resize', () => {

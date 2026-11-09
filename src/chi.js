@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import Lenis from 'lenis';
 import { Ambient } from './audio.js';
 import { FORMATI } from './formati.js';
+import { storia } from './storia.js';
 
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -253,6 +254,8 @@ addEventListener('resize', () => {
 /* ingresso e uscita: velo, e musica che si dissolve                    */
 /* ------------------------------------------------------------------ */
 const veil = $('#veil');
+storia();
+addEventListener('pageshow', (e) => { if (e.persisted) lenis.start(); });
 requestAnimationFrame(() => setTimeout(() => veil.classList.remove('on'), 60));
 if (location.hash) {
   const target = location.hash;
@@ -307,7 +310,7 @@ function sheetHTML(f) {
       <ol class="sh-steps">${f.steps.map(([h, p], i) => `<li data-sr style="--d:${0.08 * i}s"><span>${String(i + 1).padStart(2, '0')}</span><h3>${h}</h3>${p ? `<p>${p}</p>` : ''}</li>`).join('')}</ol></div>` : '';
   const nums = f.numbers ? `
     <div class="sh-block" data-sr>${f.numbersTitle ? `<p class="kicker">${f.numbersTitle}</p>` : ''}
-      <div class="sh-nums">${f.numbers.map(([n, l], i) => `<div data-sr style="--d:${0.1 * i}s"><b>${n}</b><span>${l}</span></div>`).join('')}</div></div>` : '';
+      <div class="sh-nums${f.numbersList ? ' list' : ''}">${f.numbers.map(([n, l], i) => `<div data-sr style="--d:${0.1 * i}s"><b>${n}</b><span>${l}</span></div>`).join('')}</div></div>` : '';
   const quote = f.quote ? `<blockquote class="sh-quote" data-sr>${f.quote}</blockquote>` : '';
   const dates = f.dates ? `
     <div class="sh-block" data-sr><p class="kicker">Le date</p>
@@ -324,7 +327,7 @@ function sheetHTML(f) {
         <p class="lead">${f.lead}</p>
       </div>
     </header>
-    <div class="sh-content">${steps}${nums}${quote}${dates}${photos}<p class="source">${f.source}</p>${cta}</div>`;
+    <div class="sh-content">${f.about ? `<div class="sh-block sh-about" data-sr><p class="kicker">Cos'è</p><p>${f.about}</p></div>` : ''}${steps}${nums}${quote}${dates}${photos}<p class="source">${f.source}</p>${cta}</div>`;
 }
 
 const sheetIO = new IntersectionObserver((en) => en.forEach((e) => { if (e.isIntersecting) e.target.classList.add('in'); }), { root: sheetScroll, rootMargin: '0px 0px -8% 0px' });
