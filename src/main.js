@@ -5,7 +5,6 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import Lenis from 'lenis';
-import { Ambient } from './audio.js';
 import { storia, daStoria } from './storia.js';
 
 /* ------------------------------------------------------------------ */
@@ -153,8 +152,6 @@ const lMat = new THREE.MeshPhysicalMaterial({
   envMapIntensity: 1.5,
 });
 const lMesh = new THREE.Mesh(makeL(), lMat);
-// il punto in cui la camera passa: appena dentro l'angolo retto della L (lo spigolo interno sta a -0.325, -0.775)
-const L_PASS = new THREE.Vector2(-0.02, -0.47);
 hero.add(lMesh);
 
 // controluce: un alone caldo dietro la L, che il vetro raccoglie e accende di rosso
@@ -225,20 +222,21 @@ const bubble = new THREE.Mesh(
     fragmentShader: /* glsl */ `
       uniform float uTime, uPop;
       varying vec3 vN; varying vec3 vV; varying vec3 vP;
-      // bolla trasparente: niente arcobaleno, solo un velo chiaro sul bordo, i riflessi dello studio e due punti luce
+      // bolla di sapone come nei quadri: il corpo non si vede, la disegnano solo il bianco del contorno,
+      // il riflesso netto di una finestra in alto e un chiarore tenue in basso
       void main(){
         float ndv = abs(dot(vN, vV));
-        float f = pow(1.0 - ndv, 3.2);
-        float rim = smoothstep(0.62, 1.0, 1.0 - ndv);
+        float edge = 1.0 - ndv;
+        float rim = smoothstep(0.8, 1.0, edge);                       // filo bianco sul contorno
+        float film = pow(edge, 4.0) * 0.08;                           // appena un velo verso il bordo
         vec3 r = reflect(-vV, vN);
-        float window = smoothstep(0.35, 0.9, r.y) * smoothstep(-0.2, 0.5, r.z) * 0.22;   // la finestra di luce in alto
-        float floorL = smoothstep(0.4, 0.95, -r.y) * 0.06;                                // il rimbalzo caldo dal basso
-        vec3 c = vec3(1.0, 0.97, 0.93) * (0.55 + f * 0.6) + vec3(1.0, 0.45, 0.25) * floorL;
+        float win = smoothstep(0.5, 0.53, r.y) * (1.0 - smoothstep(0.64, 0.67, r.y))
+                  * smoothstep(-0.5, -0.47, r.x) * (1.0 - smoothstep(-0.33, -0.3, r.x)) * step(0.0, r.z);   // la finestra: piccola, in alto a sinistra
+        float low = smoothstep(0.75, 0.98, -r.y) * 0.035;             // il chiarore del davanzale, in basso
         vec3 l = normalize(vec3(0.5, 0.7, 0.6));
         float spec = pow(max(dot(reflect(-l, vN), vV), 0.0), 420.0) * 1.8 + pow(max(dot(reflect(-normalize(vec3(-0.6, 0.2, 0.7)), vN), vV), 0.0), 900.0) * 0.9;
-        // quasi tutta la superficie è vuota: restano un filo sul bordo, il riflesso della finestra e i punti luce
-        float a = (f * 0.14 + rim * 0.035 + window * f * 0.55 + floorL * 0.5) * (1.0 - uPop);
-        gl_FragColor = vec4(c + spec * 2.0, a + spec * (1.0 - uPop));
+        float a = (rim * 0.5 + film + win * 0.8 + low) * (1.0 - uPop);
+        gl_FragColor = vec4(vec3(1.0) + spec, a + spec * (1.0 - uPop));
       }`,
   })
 );
@@ -367,7 +365,7 @@ RINGS.forEach((r, i) => {
 });
 
 /* ------------------------------------------------------------------ */
-/* 3. IL NASTRO DI SETA: foto che ondeggiano con la velocità           */
+/* 3. FOTO SOSPESE: galleggiano a profondità diverse e ci si vola in mezzo */
 /* ------------------------------------------------------------------ */
 const NCARDS = 15;
 const PHOTOS = Array.from({ length: NCARDS }, (_, i) => `${import.meta.env.BASE_URL}foto/foto-${String(i + 1).padStart(2, '0')}.jpg`);
@@ -376,13 +374,16 @@ const gallery = new THREE.Group();
 gallery.position.set(0, 0, galleryZ);
 scene.add(gallery);
 const shared = { uTime: { value: 0 }, uVel: { value: 0 }, uOpacity: { value: 0 } };
-const PW = 3.2, PH = 4.0, GAP_Y = 4.7;
-// tre colonne che salgono a velocità diverse
-const COLS = [
-  { x: -4.6, speed: 0.92, off: 1.8 },
-  { x: 0, speed: 1.1, off: 0 },
-  { x: 4.6, speed: 1.0, off: 3.0 },
-].map((c) => { const g = new THREE.Group(); gallery.add(g); return { ...c, g }; });
+const PW = 3.2, PH = 4.0, STEP_Z = 4.2;
+const frac = (x) => x - Math.floor(x);
+// a sinistra e a destra, alte e basse, ognuna un po' più lontana della precedente: il centro resta libero per passare
+function spot(i) {
+  const side = i % 2 ? 1 : -1;
+  return {
+    pos: new THREE.Vector3(side * (2.3 + frac(i * 0.618 + 0.1) * 2.4), (frac(i * 0.377 + 0.25) - 0.5) * 4.6, -i * STEP_Z),
+    turn: -side * (0.18 + frac(i * 0.29) * 0.14),
+  };
+}
 
 function placeholder(i) {
   const c = document.createElement('canvas');
@@ -409,6 +410,7 @@ const cards = PHOTOS.map((src, i) => {
     uHover: { value: 0 },
     uFocus: { value: 0 },
     uDim: { value: 0 },
+    uFade: { value: 0 },
   };
   loader.load(src, (t) => {
     t.colorSpace = THREE.SRGBColorSpace;
@@ -428,25 +430,16 @@ const cards = PHOTOS.map((src, i) => {
           vUv = uv;
           vec4 wp = modelMatrix * vec4(position, 1.0);
           float k = 1.0 - uFocus;
-          float dy = wp.y - cameraPosition.y;
-          float dx = wp.x - cameraPosition.x;
-          wp.z -= (dy * dy * 0.015 + dx * dx * 0.004) * k;          // il nastro si curva come un rullo
-          // pieghe di stoffa: tre onde sovrapposte, sempre vive e più forti quando si corre
-          float v = abs(uVel);
-          float w1 = sin(wp.y * 0.95 + wp.x * 0.35 + uTime * 1.5);
-          float w2 = sin(wp.y * 2.1 - wp.x * 0.9 - uTime * 1.1);
-          float w3 = sin(wp.x * 1.5 + wp.y * 0.4 + uTime * 0.8);
-          float fold = w1 * 0.65 + w2 * 0.3 + w3 * 0.25;
-          float amp = (0.05 + v * 0.55) * k;
-          wp.z += fold * amp;
-          wp.x += cos(wp.y * 0.7 + uTime) * uVel * 0.14 * k;
-          wp.y -= uVel * 0.12 * sin(wp.x * 0.5 + uTime * 0.6) * k;
-          vShade = (w1 * 0.9 * 0.95 + w2 * 0.3 * 2.1) * amp;      // pendenza: fa il riflesso della seta
+          // un respiro leggero della carta, un po' più forte quando si corre
+          float w = sin(wp.y * 0.9 + wp.x * 0.4 + uTime * 1.2) * 0.7 + sin(wp.x * 1.6 - uTime * 0.8) * 0.3;
+          float amp = (0.03 + abs(uVel) * 0.18) * k;
+          wp.z += w * amp;
+          vShade = w * amp * 1.4;
           gl_Position = projectionMatrix * viewMatrix * wp;
         }`,
       fragmentShader: /* glsl */ `
         uniform sampler2D uTex;
-        uniform float uImgAspect, uPlaneAspect, uOpacity, uHover, uVel, uDim;
+        uniform float uImgAspect, uPlaneAspect, uOpacity, uHover, uVel, uDim, uFade;
         varying vec2 vUv; varying float vShade;
         vec2 cover(vec2 uv){
           float r = uPlaneAspect / uImgAspect;
@@ -462,19 +455,19 @@ const cards = PHOTOS.map((src, i) => {
           c += vec3(0.12, 0.05, 0.02) * max(light, 0.0);             // lucido caldo della seta
           vec2 e = smoothstep(0.0, 0.012, vUv) * smoothstep(0.0, 0.012, 1.0 - vUv);
           c *= 1.0 - uDim * 0.75;
-          gl_FragColor = vec4(c, uOpacity * e.x * e.y);
+          gl_FragColor = vec4(c, uOpacity * uFade * e.x * e.y);
         }`,
     })
   );
-  const col = COLS[i % 3];
-  const row = Math.floor(i / 3);
-  const base = new THREE.Vector3(col.x, -row * GAP_Y - col.off, 0);
+  const { pos: base, turn } = spot(i);
   m.position.copy(base);
-  m.userData = { i, u, base, focus: 0, hover: 0 };
-  col.g.add(m);
+  m.rotation.y = turn;
+  m.userData = { i, u, base, turn, focus: 0, hover: 0 };
+  gallery.add(m);
   return m;
 });
 let focused = null;
+const tmpV2 = new THREE.Vector3();
 
 /* ------------------------------------------------------------------ */
 /* 4. IL BATTISTERO DI GRANI                                           */
@@ -648,9 +641,9 @@ function fit() {
   camera.aspect = a;
   camera.updateProjectionMatrix();
   hero.scale.setScalar(a < 0.8 ? 0.8 : 1);
-  // il nastro largo 13,5 deve stare nella vista a 10 di distanza
+  // sul telefono le foto si stringono verso il centro, perché stiano nella vista
   const gs = clamp((2 * 10 * tanV * a * 0.96) / 13.5, 0.42, 1);
-  gallery.scale.setScalar(gs);
+  gallery.scale.set(gs, gs, 1);
   // foto ingrandita: riempie la vista, anche in verticale
   const H = 2 * 6.1 * tanV, W = H * a;
   focusScale = Math.min((0.88 * W) / PW, (0.8 * H) / PH) / gs;
@@ -658,56 +651,36 @@ function fit() {
 fit();
 
 /* ------------------------------------------------------------------ */
-/* scroll morbido, audio, interfaccia                                  */
+/* scroll morbido e interfaccia                                        */
 /* ------------------------------------------------------------------ */
 const lenis = new Lenis({ lerp: 0.07, smoothWheel: true, syncTouch: true, syncTouchLerp: 0.075 });
 lenis.stop();
 document.body.classList.add('locked');
 
-const audio = new Ambient();
 const $ = (id) => document.getElementById(id);
-const gate = $('gate'), soundBtn = $('sound'), cursor = $('cursor'), veil = $('veil');
+const gate = $('gate'), cursor = $('cursor'), veil = $('veil');
 const layers = {
   hero: $('l-hero'), r: [$('l-r1'), $('l-r2'), $('l-r3')], gal: $('l-gal'), batt: $('l-batt'), end: $('l-end'),
 };
 const goLinks = [...document.querySelectorAll('.go')];
 if (isTouch) document.querySelectorAll('[data-touch]').forEach((el) => { el.textContent = el.dataset.touch; });
 
-// ?muto nell'indirizzo: il sito parte senza suono (serve per le prove)
-const MUTE = new URLSearchParams(location.search).has('muto');
-$('enter').addEventListener('click', () => {
-  if (MUTE) audio.muted = true;
-  audio.start();
-  if (MUTE) { soundBtn.classList.add('off'); }
-  try { localStorage.setItem('locus-suono', MUTE ? 'off' : 'on'); } catch (e) {}
-  apri();
-});
+$('enter').addEventListener('click', () => apri());
 function apri() {
   gate.classList.add('out');
   document.body.classList.add('entered');
-  soundBtn.classList.add('on');
   document.body.classList.remove('locked');
   lenis.start();
 }
-soundBtn.addEventListener('click', () => {
-  const m = !audio.muted;
-  audio.setMuted(m);
-  try { localStorage.setItem('locus-suono', m ? 'off' : 'on'); } catch (e) {}
-  soundBtn.classList.toggle('off', m);
-  soundBtn.classList.toggle('on', !m);
-});
-document.addEventListener('visibilitychange', () => audio.duck(document.hidden));
-addEventListener('blur', () => audio.duck(true));
-addEventListener('focus', () => { if (!document.hidden) audio.duck(false); });
 
-// uscita verso un'altra pagina: velo scuro e musica che si dissolve
+// uscita verso un'altra pagina: velo scuro
 document.querySelectorAll('[data-dissolve]').forEach((a) => {
   a.addEventListener('click', (e) => {
     e.preventDefault();
     veil.classList.add('on');
     lenis.stop();
     ricorda();
-    audio.dissolve(3.6).then(() => { location.href = a.href; });
+    setTimeout(() => { location.href = a.href; }, 1500);
   });
 });
 
@@ -735,8 +708,6 @@ let popped = false, popT = 0, wobbleHot = 0;
 function pop() {
   if (popped) return;
   popped = true;
-  audio.bell(0.12);
-  setTimeout(() => audio.bell(0.08), 140);
 }
 
 addEventListener('click', (e) => {
@@ -754,7 +725,6 @@ addEventListener('click', (e) => {
   }
   if (bUni.uOpacity.value > 0.5 && bUni.uMouse.value.z < 900) {
     bUni.uBurst.value = 2.2;
-    audio.whoosh();
   }
 });
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && focused) unfocus(); });
@@ -762,7 +732,6 @@ addEventListener('keydown', (e) => { if (e.key === 'Escape' && focused) unfocus(
 function focusCard(m) {
   focused = m;
   lenis.stop();
-  audio.bell(0.1);
 }
 function unfocus() {
   focused = null;
@@ -835,14 +804,8 @@ function frame(time) {
   /* camera */
   const cz = cameraZ(p);
   const flight = seg(p, 0.12, 0.5);
-  // la L resta ferma: la camera le si avvicina e passa appena dentro l'angolo tra la stanghetta lunga e quella corta,
-  // poi, lasciata la L alle spalle, torna al centro del volo
-  const near = ease(seg(7 - cz, 0, 6.7)) * (1 - ease(seg(-cz, 2, 10)));
-  const hs = hero.scale.x;
-  const offX = L_PASS.x * hs * near, offY = L_PASS.y * hs * near;
-  const mk = 1 - near * 0.85; // vicino alla L il puntatore sposta poco la camera, per non sbatterci contro
-  camera.position.set(offX + mouseS.x * 0.45 * mk, offY + mouseS.y * 0.3 * mk, cz);
-  camera.lookAt(offX + mouseS.x * 0.15 * mk, offY + mouseS.y * 0.1 * mk, cz - 10);
+  camera.position.set(mouseS.x * 0.45, mouseS.y * 0.3, cz);
+  camera.lookAt(mouseS.x * 0.15, mouseS.y * 0.1, cz - 10);
   camera.rotateZ(Math.sin(flight * Math.PI * 2) * 0.09 * Math.sin(flight * Math.PI));
   scene.fog.color.copy(bgAt(p));
   glowUni.uBg.value.copy(bg);
@@ -850,7 +813,9 @@ function frame(time) {
 
   /* 1. bolla e L */
   hero.visible = cz > -9;
-  glowUni.uFade.value = seg(cz, 0.5, 4); // il controluce si spegne prima che la camera lo attraversi
+  const leave = ease(seg(p, 0.07, 0.2));
+  hero.position.set(leave * -1.5, leave * 6.5, -leave * 4);
+  hero.rotation.z = leave * 0.5;
   if (hero.visible) {
     if (p > 0.025) pop();
     if (p < 0.004 && popped && popT > 0.99) popped = false; // tornando in cima la bolla si riforma
@@ -878,9 +843,9 @@ function frame(time) {
     }
 
     // la L segue il puntatore e respira
-    lMesh.rotation.y = lerp(lMesh.rotation.y, (mouseS.x * 0.6 + Math.sin(t * 0.4) * 0.15) * mk, 0.08);
-    lMesh.rotation.x = lerp(lMesh.rotation.x, -mouseS.y * 0.4 * mk, 0.08);
-    lMesh.position.y = Math.sin(t * 0.8) * 0.08 * mk;
+    lMesh.rotation.y = lerp(lMesh.rotation.y, mouseS.x * 0.6 + Math.sin(t * 0.4) * 0.15, 0.08);
+    lMesh.rotation.x = lerp(lMesh.rotation.x, -mouseS.y * 0.4, 0.08);
+    lMesh.position.y = Math.sin(t * 0.8) * 0.08;
     const spread = 1 + wobbleHot * 0.12 + ease(popT) * 0.25;
     corners.forEach((c) => {
       c.position.set(c.userData.sx * 1.75 * spread, c.userData.sy * 1.95 * spread, 0.5);
@@ -897,7 +862,7 @@ function frame(time) {
     r.ticks.rotation.z -= dt * 0.05;
     const d = cz - r.z;
     // passaggio dentro l'anello: lampo di luce e soffio
-    if (prevCamZ > r.z && cz <= r.z) { r.flash = 1; audio.whoosh(); }
+    if (prevCamZ > r.z && cz <= r.z) { r.flash = 1; }
     if (prevCamZ < r.z && cz >= r.z) r.flash = 0.5;
     r.flash *= 0.94;
     const fade = 1 - seg(Math.abs(d), 16, 44);
@@ -917,30 +882,40 @@ function frame(time) {
   });
   bloom.strength = 0.45 + RINGS.reduce((s, r) => s + r.flash, 0) * 0.35;
 
-  /* 3. nastro di seta */
+  /* 3. foto sospese */
   gallery.visible = p > 0.42 && p < 0.8;
-  shared.uOpacity.value = win(p, 0.45, 0.52, 0.72, 0.77);
+  shared.uOpacity.value = win(p, 0.44, 0.5, 0.72, 0.77);
   shared.uTime.value = t;
   shared.uVel.value = lerp(shared.uVel.value, focused ? 0 : vel, 0.1);
   if (gallery.visible) {
-    const run = ease(seg(p, 0.46, 0.76));
-    const rows = Math.ceil(NCARDS / 3) - 1;
-    COLS.forEach((c) => { c.g.position.y = -7 + run * (rows * GAP_Y + 14 + c.off) * c.speed; });
-    gallery.position.x = Math.sin(t * 0.25) * 0.1;
+    // la camera è ferma a -58: è il campo di foto che le viene incontro, la prima da 14 di distanza, l'ultima fin dietro le spalle
+    const run = seg(p, 0.45, 0.72);
+    const last = (NCARDS - 1) * STEP_Z;
+    gallery.position.z = lerp(cz - 14, cz + 4 + last, run);
+    gallery.position.x = Math.sin(t * 0.21) * 0.15;
     ray.setFromCamera(mouse, camera);
     const hit = !focused && pointerSeen && shared.uOpacity.value > 0.5 ? ray.intersectObjects(cards)[0] : null;
     cards.forEach((m) => {
       const ud = m.userData;
+      // compare da lontano, sparisce appena ti passa accanto
+      const d = cz - (gallery.position.z + ud.base.z);
+      ud.u.uFade.value = focused === m ? 1 : seg(d, 0.8, 3.5) * (1 - seg(d, 22, 30));
       ud.hover = lerp(ud.hover, hit && hit.object === m ? 1 : 0, 0.08);
       ud.focus = lerp(ud.focus, focused === m ? 1 : 0, 0.075);
       ud.u.uHover.value = ud.hover;
       ud.u.uFocus.value = ud.focus;
       ud.u.uDim.value = lerp(ud.u.uDim.value, focused && focused !== m ? 1 : 0, 0.08);
+      // ognuna galleggia piano per conto suo
+      tmpV2.copy(ud.base);
+      tmpV2.y += Math.sin(t * 0.35 + ud.i * 1.7) * 0.18;
+      tmpV2.x += Math.sin(t * 0.27 + ud.i * 2.3) * 0.1;
       // zoom al clic: la foto viene davanti e riempie la vista
       tmpV.set(camera.position.x, camera.position.y, cz - 6.1);
       m.parent.worldToLocal(tmpV);
-      m.position.lerpVectors(ud.base, tmpV, ease(ud.focus));
-      m.scale.setScalar((1 + ud.hover * 0.04) * lerp(1, focusScale, ease(ud.focus)));
+      const f = ease(ud.focus);
+      m.position.lerpVectors(tmpV2, tmpV, f);
+      m.rotation.y = ud.turn * (1 - f);
+      m.scale.setScalar((1 + ud.hover * 0.04) * lerp(1, focusScale, f));
     });
     if (hit) hot = true;
     if (focused) hot = true;
@@ -968,7 +943,6 @@ function frame(time) {
       if (wasInside && !inside && formed) {
         if (mDir.lengthSq() < 1e-6) mDir.set(Math.sign(tmpV.x) || 1, 0, 0);
         emitSparks(lastInside, mDir.normalize(), 150);
-        audio.bell(0.05);
       }
       wasInside = inside;
     }
@@ -986,7 +960,6 @@ function frame(time) {
   if (p > 0.47 && p < 0.76) mood = 0.6;
   else if (p >= 0.76) mood = 0.25 + seg(p, 0.76, 0.9) * 0.3 - seg(p, 0.93, 1) * 0.35;
   else if (p < 0.1) mood = 0.2 + (popped ? 0.2 : 0);
-  if (Math.random() < 0.1) audio.setMood(mood, lenis.velocity);
 
   /* cursore */
   cur.x = lerp(cur.x, cur.tx, 0.42);
@@ -1012,15 +985,6 @@ function riprendi(y) {
   if (y > 0) { popped = true; popT = 1; }
   apri();
   lenis.scrollTo(y, { immediate: true, force: true });
-  // il browser accende il suono solo dopo un gesto: al primo tocco, se era acceso
-  let want = 'on';
-  try { want = localStorage.getItem('locus-suono') || 'on'; } catch (e) {}
-  if (MUTE || want === 'off') { audio.muted = true; soundBtn.classList.add('off'); }
-  const gesto = () => {
-    removeEventListener('pointerdown', gesto); removeEventListener('keydown', gesto);
-    if (!audio.ctx) audio.start(); else audio.duck(false);
-  };
-  addEventListener('pointerdown', gesto); addEventListener('keydown', gesto);
 }
 let saved = null;
 try { saved = sessionStorage.getItem('locus-home'); } catch (e) {}
@@ -1030,7 +994,6 @@ addEventListener('pageshow', (e) => {
   if (!e.persisted) return;
   veil.classList.remove('on');
   if (gate.classList.contains('out')) lenis.start();
-  if (audio.ctx) audio.duck(false);
 });
 
 if (import.meta.env.DEV) window.__dbg = { scene, renderer, composer, backGlow, lMesh, lMat, bubble, setPR };

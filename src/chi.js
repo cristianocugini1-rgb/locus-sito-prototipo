@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import Lenis from 'lenis';
-import { Ambient } from './audio.js';
 import { FORMATI } from './formati.js';
 import { storia } from './storia.js';
 
@@ -23,6 +22,9 @@ $$('#menu a, .scroll-hint').forEach((a) => {
     if (!id.startsWith('#')) return;
     e.preventDefault();
     document.body.classList.remove('menu-open');
+    // ogni sezione raggiunta dal menu è un passo della cronologia
+    history.replaceState({ ...(history.state || {}), y: scrollY }, '');
+    history.pushState({ sec: id }, '', id);
     lenis.scrollTo(id, { duration: 1.8, offset: -40, easing: (t) => 1 - Math.pow(1 - t, 4) });
   });
 });
@@ -262,37 +264,13 @@ if (location.hash) {
   setTimeout(() => lenis.scrollTo(target, { duration: 2.2, offset: -40 }), 700);
 }
 
-const audio = new Ambient();
-const soundBtn = $('#sound');
-const MUTE = new URLSearchParams(location.search).has('muto');
-let want = 'on';
-try { want = localStorage.getItem('locus-suono') || 'on'; } catch (e) {}
-if (MUTE) want = 'off';
-// il browser fa partire il suono solo dopo un gesto: al primo tocco o tasto, se era acceso
-function firstGesture() {
-  removeEventListener('pointerdown', firstGesture);
-  removeEventListener('keydown', firstGesture);
-  if (want === 'on' && !audio.ctx) { audio.start(); soundBtn.classList.add('on'); }
-}
-addEventListener('pointerdown', firstGesture);
-addEventListener('keydown', firstGesture);
-soundBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  if (!audio.ctx) { want = 'on'; audio.start(); soundBtn.classList.add('on'); }
-  else { const m = !audio.muted; audio.setMuted(m); soundBtn.classList.toggle('on', !m); want = m ? 'off' : 'on'; }
-  try { localStorage.setItem('locus-suono', want); } catch (er) {}
-});
-document.addEventListener('visibilitychange', () => audio.duck(document.hidden));
-addEventListener('blur', () => audio.duck(true));
-addEventListener('focus', () => { if (!document.hidden) audio.duck(false); });
 
 $$('[data-dissolve]').forEach((a) => {
   a.addEventListener('click', (e) => {
     e.preventDefault();
     veil.classList.add('leave', 'on');
     lenis.stop();
-    const wait = audio.ctx ? audio.dissolve(3.2) : new Promise((r) => setTimeout(r, 1700));
-    wait.then(() => { location.href = a.href; });
+    setTimeout(() => { location.href = a.href; }, 1700);
   });
 });
 
@@ -349,6 +327,8 @@ function openSheet(card) {
   sheet.setAttribute('aria-hidden', 'false');
   document.body.classList.add('sheet-on');
   sheetOpen = true;
+  history.replaceState({ ...(history.state || {}), y: scrollY }, '');
+  history.pushState({ sheet: card.dataset.format }, '');
   lenis.stop();
   $$('[data-sr]', sheetBody).forEach((el) => sheetIO.observe(el));
   $$('[data-sheet-go]', sheetBody).forEach((a) => a.addEventListener('click', (e) => {
@@ -356,10 +336,21 @@ function openSheet(card) {
     closeSheet();
     setTimeout(() => lenis.scrollTo(a.getAttribute('href'), { duration: 1.8, offset: -40 }), 700);
   }));
-  if (audio.ctx) audio.bell(0.08);
   setTimeout(() => $('.sheet-x', sheet).focus({ preventScroll: true }), 500);
 }
+// la scheda aperta è un passo della cronologia: il tasto indietro la chiude invece di cambiare pagina
 function closeSheet() {
+  if (!sheetOpen) return;
+  if (history.state && history.state.sheet) history.back();
+  else chiudi();
+}
+addEventListener('popstate', (e) => {
+  const s = e.state || {};
+  if (sheetOpen && !s.sheet) { chiudi(); return; }
+  if (typeof s.y === 'number') lenis.scrollTo(s.y, { duration: 1.4 });
+  else if (s.sec) lenis.scrollTo(s.sec, { duration: 1.4, offset: -40 });
+});
+function chiudi() {
   if (!sheetOpen) return;
   sheetOpen = false;
   sheet.classList.remove('open');

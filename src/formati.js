@@ -30,7 +30,7 @@ export const FORMATI = {
     kicker: '150 persone a serata',
     title: 'La Grande Bolla',
     lead: 'Conversazioni urbane per uscire dalla propria bolla. Una serata in cinque tempi.',
-    about: 'La Grande Bolla è una serata di conversazioni urbane. Persone che di solito non si incontrano si siedono allo stesso tavolo, discutono un tema, ascoltano tre ospiti sul palco e poi prendono il microfono.',
+    about: "La Grande Bolla è una serata di conversazioni urbane, per uscire dalla propria bolla. Ogni sera ha un tema. Ci si siede a tavoli di persone che di solito non si incontrano, ognuno con un facilitatore, e si parte da un menù di tre posizioni semplificate. Poi la discussione sale sul palco: tre ospiti e un moderatore. Alla fine il microfono gira in sala e la parola torna a chi ascolta. Sei edizioni l'anno, circa 150 persone a serata.",
     cover: img('ospiti-bolla.jpg'),
     stepsTitle: 'Una serata in cinque tempi',
     steps: [
@@ -60,7 +60,7 @@ export const FORMATI = {
     kicker: 'Da novembre 2026',
     title: 'Speed Debate',
     lead: 'Conoscersi discutendo, dopocena, a tavolini da due.',
-    about: 'Lo Speed Debate è un modo di conoscersi discutendo. Dopocena, a tavolini da due: a ogni round cambi persona e prendi posizione su una domanda.',
+    about: "Lo Speed Debate è un modo di conoscersi discutendo. Dopocena, a tavolini da due: tre round da quindici minuti, ognuno con una persona nuova. A ogni round si gira una carta con una domanda su cui prendere posizione, e i telefoni restano fuori dal gioco. Alla fine due ospiti con idee opposte si sfidano sul palco. Il primo appuntamento è a novembre 2026.",
     cover: img('evento-tavoli.jpg'),
     numbersList: true,
     numbersTitle: 'Le regole',
