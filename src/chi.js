@@ -462,8 +462,7 @@ join.addEventListener('submit', (e) => {
     'Dichiaro di avere più di 18 anni, di aver letto lo statuto e acconsento al trattamento dei dati per il tesseramento.',
   ];
   const oggetto = `Richiesta di tesseramento: ${d.nome} ${d.cognome}`;
-  location.href = `mailto:locus.parma@gmail.com?subject=${encodeURIComponent(oggetto)}&body=${encodeURIComponent(righe.join('
-'))}`;
+  location.href = `mailto:locus.parma@gmail.com?subject=${encodeURIComponent(oggetto)}&body=${encodeURIComponent(righe.join(String.fromCharCode(10)))}`;
   joinMsg.textContent = "Si è aperta la tua app di posta con la richiesta già scritta: premi invia. Se non si apre nulla, scrivi a locus.parma@gmail.com.";
 });
 
