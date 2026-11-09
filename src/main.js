@@ -152,10 +152,12 @@ const lMat = new THREE.MeshPhysicalMaterial({
   envMapIntensity: 1.5,
 });
 const lMesh = new THREE.Mesh(makeL(), lMat);
+// il punto in cui la camera passa: appena dentro l'angolo retto della L (lo spigolo interno sta a -0.325, -0.775)
+const L_PASS = new THREE.Vector2(-0.02, -0.47);
 hero.add(lMesh);
 
 // controluce: un alone caldo dietro la L, che il vetro raccoglie e accende di rosso
-const glowUni = { uBg: { value: new THREE.Color('#140404') }, uTime: { value: 0 } };
+const glowUni = { uBg: { value: new THREE.Color('#140404') }, uTime: { value: 0 }, uFade: { value: 1 } };
 const backGlow = new THREE.Mesh(
   new THREE.PlaneGeometry(9, 9),
   new THREE.ShaderMaterial({
@@ -165,7 +167,7 @@ const backGlow = new THREE.Mesh(
     blending: THREE.AdditiveBlending,
     vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: `
-      uniform vec3 uBg; uniform float uTime; varying vec2 vUv;
+      uniform vec3 uBg; uniform float uTime, uFade; varying vec2 vUv;
       void main(){
         vec2 q = vUv - 0.5;
         float r = length(q * vec2(1.0, 0.92));
@@ -173,7 +175,7 @@ const backGlow = new THREE.Mesh(
         float halo = 1.0 - smoothstep(0.02, 0.5, r);
         vec3 warm = mix(vec3(0.30, 0.025, 0.012), vec3(0.95, 0.30, 0.10), core * core);
         float breathe = 0.9 + 0.1 * sin(uTime * 0.7);
-        gl_FragColor = vec4(warm * breathe * halo * halo * 0.55, 1.0);
+        gl_FragColor = vec4(warm * breathe * halo * halo * 0.55 * uFade, 1.0);
       }`,
   })
 );
@@ -233,7 +235,8 @@ const bubble = new THREE.Mesh(
         vec3 c = vec3(1.0, 0.97, 0.93) * (0.55 + f * 0.6) + vec3(1.0, 0.45, 0.25) * floorL;
         vec3 l = normalize(vec3(0.5, 0.7, 0.6));
         float spec = pow(max(dot(reflect(-l, vN), vV), 0.0), 420.0) * 1.8 + pow(max(dot(reflect(-normalize(vec3(-0.6, 0.2, 0.7)), vN), vV), 0.0), 900.0) * 0.9;
-        float a = (f * 0.3 + rim * 0.08 + window * f + floorL + 0.008) * (1.0 - uPop);
+        // quasi tutta la superficie è vuota: restano un filo sul bordo, il riflesso della finestra e i punti luce
+        float a = (f * 0.14 + rim * 0.035 + window * f * 0.55 + floorL * 0.5) * (1.0 - uPop);
         gl_FragColor = vec4(c + spec * 2.0, a + spec * (1.0 - uPop));
       }`,
   })
@@ -827,8 +830,14 @@ function frame(time) {
   /* camera */
   const cz = cameraZ(p);
   const flight = seg(p, 0.12, 0.5);
-  camera.position.set(mouseS.x * 0.45, mouseS.y * 0.3, cz);
-  camera.lookAt(mouseS.x * 0.15, mouseS.y * 0.1, cz - 10);
+  // la L resta ferma: la camera le si avvicina e passa appena dentro l'angolo tra la stanghetta lunga e quella corta,
+  // poi, lasciata la L alle spalle, torna al centro del volo
+  const near = ease(seg(7 - cz, 0, 6.7)) * (1 - ease(seg(-cz, 2, 10)));
+  const hs = hero.scale.x;
+  const offX = L_PASS.x * hs * near, offY = L_PASS.y * hs * near;
+  const mk = 1 - near * 0.85; // vicino alla L il puntatore sposta poco la camera, per non sbatterci contro
+  camera.position.set(offX + mouseS.x * 0.45 * mk, offY + mouseS.y * 0.3 * mk, cz);
+  camera.lookAt(offX + mouseS.x * 0.15 * mk, offY + mouseS.y * 0.1 * mk, cz - 10);
   camera.rotateZ(Math.sin(flight * Math.PI * 2) * 0.09 * Math.sin(flight * Math.PI));
   scene.fog.color.copy(bgAt(p));
   glowUni.uBg.value.copy(bg);
@@ -836,9 +845,7 @@ function frame(time) {
 
   /* 1. bolla e L */
   hero.visible = cz > -9;
-  const leave = ease(seg(p, 0.07, 0.2));
-  hero.position.set(leave * -1.5, leave * 6.5, -leave * 4);
-  hero.rotation.z = leave * 0.5;
+  glowUni.uFade.value = seg(cz, 0.5, 4); // il controluce si spegne prima che la camera lo attraversi
   if (hero.visible) {
     if (p > 0.025) pop();
     if (p < 0.004 && popped && popT > 0.99) popped = false; // tornando in cima la bolla si riforma
@@ -866,9 +873,9 @@ function frame(time) {
     }
 
     // la L segue il puntatore e respira
-    lMesh.rotation.y = lerp(lMesh.rotation.y, mouseS.x * 0.6 + Math.sin(t * 0.4) * 0.15, 0.08);
-    lMesh.rotation.x = lerp(lMesh.rotation.x, -mouseS.y * 0.4, 0.08);
-    lMesh.position.y = Math.sin(t * 0.8) * 0.08;
+    lMesh.rotation.y = lerp(lMesh.rotation.y, (mouseS.x * 0.6 + Math.sin(t * 0.4) * 0.15) * mk, 0.08);
+    lMesh.rotation.x = lerp(lMesh.rotation.x, -mouseS.y * 0.4 * mk, 0.08);
+    lMesh.position.y = Math.sin(t * 0.8) * 0.08 * mk;
     const spread = 1 + wobbleHot * 0.12 + ease(popT) * 0.25;
     corners.forEach((c) => {
       c.position.set(c.userData.sx * 1.75 * spread, c.userData.sy * 1.95 * spread, 0.5);
