@@ -171,8 +171,8 @@ scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial
       vec2 c2 = vec2(0.82, 0.78) * asp + vec2(sin(uTime*0.12), cos(uTime*0.1)) * 0.08;
       float g2 = 1.0 - smoothstep(0.0, 1.1, length(p - c2));
       float n = noise(p * 2.2 + vec2(uTime * 0.04, -uScroll * 0.6));
-      vec3 base = vec3(0.078, 0.016, 0.016);
-      vec3 col = base + uColor * (g1 * g1 * 0.32 + g2 * g2 * 0.42) * (0.75 + n * 0.5);
+      vec3 base = vec3(0.13, 0.024, 0.02);
+      vec3 col = base + uColor * (g1 * g1 * 0.42 + g2 * g2 * 0.56) * (0.75 + n * 0.5);
       gl_FragColor = vec4(col, 1.0);
     }`,
 })));

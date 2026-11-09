@@ -197,10 +197,10 @@ const corners = [];
 });
 hero.add(brackets);
 
-// la bolla: trasparente, con un velo chiaro sul bordo e la superficie che respira
+// la bolla di sapone: quasi invisibile, la forma che ondeggia, chiazze pastello che girano piano e un filo bianco sul contorno
 const bubbleUniforms = { uTime: { value: 0 }, uWobble: { value: 1 }, uPop: { value: 0 } };
 const bubble = new THREE.Mesh(
-  new THREE.SphereGeometry(2.9, 96, 96),
+  new THREE.SphereGeometry(2.9, 128, 128),
   new THREE.ShaderMaterial({
     uniforms: bubbleUniforms,
     transparent: true,
@@ -208,35 +208,57 @@ const bubble = new THREE.Mesh(
     vertexShader: /* glsl */ `
       uniform float uTime, uWobble, uPop;
       varying vec3 vN; varying vec3 vV; varying vec3 vP;
+      // la deformazione: onde larghe e lente, come una bolla vera spinta dall'aria, più increspature fini
+      float disp(vec3 n){
+        float big = sin(n.x * 2.1 + uTime * 0.7) * 0.07 + sin(n.y * 2.6 - uTime * 0.55) * 0.06 + sin(n.z * 1.9 + n.x * 1.3 + uTime * 0.62) * 0.05;
+        float fine = sin(n.y * 6.4 + uTime * 1.4) * 0.008 + sin(n.x * 9.0 - uTime * 1.1) * 0.006;
+        return (big + fine) * uWobble;
+      }
+      vec3 shape(vec3 x){ vec3 n = normalize(x); return n * (2.9 + disp(n)); }
       void main(){
-        vec3 p = position;
-        float w = sin(p.y*2.2 + uTime*1.4) * 0.022 + sin(p.x*3.1 - uTime*1.1) * 0.018 + sin(p.z*2.7 + uTime*0.9)*0.014;
-        p += normal * w * uWobble;
+        vec3 p = shape(position);
+        vec3 nn = normalize(position);
+        vec3 t1 = normalize(cross(nn, abs(nn.y) < 0.99 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)));
+        vec3 t2 = cross(nn, t1);
+        vec3 nrm = normalize(cross(shape(position + t1 * 0.02) - p, shape(position + t2 * 0.02) - p));
+        if (dot(nrm, nn) < 0.0) nrm = -nrm;
         p *= 1.0 + uPop * 0.35;
         vec4 wp = modelMatrix * vec4(p, 1.0);
         vP = p;
-        vN = normalize(mat3(modelMatrix) * normal);
+        vN = normalize(mat3(modelMatrix) * nrm);
         vV = normalize(cameraPosition - wp.xyz);
         gl_Position = projectionMatrix * viewMatrix * wp;
       }`,
     fragmentShader: /* glsl */ `
       uniform float uTime, uPop;
       varying vec3 vN; varying vec3 vV; varying vec3 vP;
-      // bolla di sapone come nei quadri: il corpo non si vede, la disegnano solo il bianco del contorno,
-      // il riflesso netto di una finestra in alto e un chiarore tenue in basso
+      float h(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+      float noise(vec3 p){
+        vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(mix(h(i), h(i + vec3(1,0,0)), f.x), mix(h(i + vec3(0,1,0)), h(i + vec3(1,1,0)), f.x), f.y),
+                   mix(mix(h(i + vec3(0,0,1)), h(i + vec3(1,0,1)), f.x), mix(h(i + vec3(0,1,1)), h(i + vec3(1,1,1)), f.x), f.y), f.z);
+      }
+      float fbm(vec3 p){ return noise(p) * 0.55 + noise(p * 2.03 + 3.1) * 0.3 + noise(p * 4.1 + 7.7) * 0.15; }
       void main(){
         float ndv = abs(dot(vN, vV));
         float edge = 1.0 - ndv;
-        float rim = smoothstep(0.8, 1.0, edge);                       // filo bianco sul contorno
-        float film = pow(edge, 4.0) * 0.08;                           // appena un velo verso il bordo
+        // lo spessore del film di sapone: vortici lenti, e il sapone che scivola verso il basso
+        vec3 q = vP * 0.45 + vec3(sin(uTime * 0.11), uTime * 0.06, cos(uTime * 0.09));
+        float n = fbm(q + fbm(q * 1.6 + vec3(0.0, uTime * 0.05, 0.0)) * 1.4);
+        float thick = n * 1.5 + edge * 0.8 - vP.y * 0.06 + uTime * 0.015;
+        vec3 film = 0.5 + 0.5 * cos(6.2832 * (thick + vec3(0.0, 0.33, 0.67)));
+        film = mix(vec3(1.0), film, 0.38);                               // colori pastello, mai accesi
+        float patches = smoothstep(0.42, 0.8, n);                        // i colori stanno a chiazze, non dappertutto
+        float filmA = patches * pow(edge, 1.2) * 0.07 + pow(edge, 3.2) * 0.2;
+        float rim = smoothstep(0.82, 1.0, edge);                         // il filo bianco sul contorno
         vec3 r = reflect(-vV, vN);
         float win = smoothstep(0.5, 0.53, r.y) * (1.0 - smoothstep(0.64, 0.67, r.y))
-                  * smoothstep(-0.5, -0.47, r.x) * (1.0 - smoothstep(-0.33, -0.3, r.x)) * step(0.0, r.z);   // la finestra: piccola, in alto a sinistra
-        float low = smoothstep(0.75, 0.98, -r.y) * 0.035;             // il chiarore del davanzale, in basso
+                  * smoothstep(-0.5, -0.47, r.x) * (1.0 - smoothstep(-0.33, -0.3, r.x)) * step(0.0, r.z);   // la finestra, piccola
         vec3 l = normalize(vec3(0.5, 0.7, 0.6));
         float spec = pow(max(dot(reflect(-l, vN), vV), 0.0), 420.0) * 1.8 + pow(max(dot(reflect(-normalize(vec3(-0.6, 0.2, 0.7)), vN), vV), 0.0), 900.0) * 0.9;
-        float a = (rim * 0.5 + film + win * 0.8 + low) * (1.0 - uPop);
-        gl_FragColor = vec4(vec3(1.0) + spec, a + spec * (1.0 - uPop));
+        vec3 c = mix(film, vec3(1.0), clamp(rim * 0.7 + win, 0.0, 1.0));
+        float a = (filmA + rim * 0.35 + win * 0.75) * (1.0 - uPop);
+        gl_FragColor = vec4(c + spec, a + spec * (1.0 - uPop));
       }`,
   })
 );
@@ -321,14 +343,14 @@ RINGS.forEach((r, i) => {
   // anima incandescente
   const core = new THREE.Mesh(
     new THREE.TorusGeometry(R_RING, 0.03, 16, 480),
-    new THREE.MeshBasicMaterial({ color: r.color.clone().lerp(new THREE.Color('#ffffff'), 0.35).multiplyScalar(2.0) })
+    new THREE.MeshBasicMaterial({ color: r.color.clone().lerp(new THREE.Color('#ffffff'), 0.35).multiplyScalar(2.0), transparent: true })
   );
   // fascio e alone
   const beam = new THREE.Mesh(new THREE.TorusGeometry(R_RING, 0.3, 48, 480), beamMat(r.color, 2.6, 0.85, i * 1.7));
   const haze = new THREE.Mesh(new THREE.TorusGeometry(R_RING, 1.2, 32, 240), beamMat(r.color, 5.5, 0.2, i * 1.7 + 0.6));
   // ghiera di metallo spazzolato, piatta come quella di un obiettivo
   const metalMat = new THREE.MeshPhysicalMaterial({
-    color: r.metal, metalness: 1, roughness: 0.3, anisotropy: 0.8, clearcoat: 0.25, envMapIntensity: 1.3,
+    color: r.metal, metalness: 1, roughness: 0.3, anisotropy: 0.8, clearcoat: 0.25, envMapIntensity: 1.3, transparent: true,
   });
   const band = new THREE.Mesh(new THREE.TorusGeometry(R_RING + 0.62, 0.06, 20, 480), metalMat);
   band.scale.z = 4.5;
@@ -361,7 +383,7 @@ RINGS.forEach((r, i) => {
   g.add(band, ticks, haze, beam, core, grains);
   g.rotation.z = i * 0.7;
   scene.add(g);
-  Object.assign(r, { group: g, core, beam, haze, ticks, grains, flash: 0 });
+  Object.assign(r, { group: g, core, beam, haze, ticks, grains, metalMat, flash: 0 });
 });
 
 /* ------------------------------------------------------------------ */
@@ -723,9 +745,6 @@ addEventListener('click', (e) => {
     const hit = ray.intersectObjects(cards)[0];
     if (hit) { focusCard(hit.object); return; }
   }
-  if (bUni.uOpacity.value > 0.5 && bUni.uMouse.value.z < 900) {
-    bUni.uBurst.value = 2.2;
-  }
 });
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && focused) unfocus(); });
 
@@ -856,7 +875,13 @@ function frame(time) {
 
   /* 2. anelli */
   let mood = 0.3;
+  // all'apertura si vedono solo la L e la bolla: gli anelli si accendono quando si comincia a scorrere
+  const appear = ease(seg(p, 0.015, 0.09));
   RINGS.forEach((r, i) => {
+    r.group.visible = appear > 0.002;
+    r.core.material.opacity = appear;
+    r.metalMat.opacity = appear;
+    r.grains.material.opacity = 0.75 * appear;
     r.group.rotation.z += dt * (0.04 + i * 0.015);
     r.grains.rotation.z -= dt * 0.18;
     r.ticks.rotation.z -= dt * 0.05;
@@ -870,7 +895,7 @@ function frame(time) {
     for (const m of [r.beam, r.haze]) {
       const u = m.material.uniforms;
       u.uTime.value = t; u.uFlash.value = r.flash;
-      u.uFade.value = fade * (m === r.haze ? lerp(0.08, 1, close) : lerp(0.45, 1, close));
+      u.uFade.value = appear * fade * (m === r.haze ? lerp(0.08, 1, close) : lerp(0.45, 1, close));
     }
     const near = clamp(1 - Math.abs(d) / 14);
     r.group.scale.setScalar(1 + near * 0.05 * Math.sin(t * 2 + i));
