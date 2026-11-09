@@ -434,7 +434,7 @@ function stripMotion() {
 }
 
 /* ------------------------------------------------------------------ */
-/* tesserati: il modulo, in prova finché non si decide dove arrivano i dati */
+/* tesserati: la richiesta parte come mail a Locus, dall'app di posta di chi compila */
 /* ------------------------------------------------------------------ */
 const join = $('#join');
 const joinMsg = $('#join-msg');
@@ -446,7 +446,24 @@ join.addEventListener('submit', (e) => {
     join.querySelector(':invalid')?.focus();
     return;
   }
-  // nessun dato parte da qui: il collegamento si fa quando è deciso dove devono arrivare le richieste
-  joinMsg.textContent = 'Il modulo è ancora in prova e non invia nulla. Per tesserarti scrivici a locus.parma@gmail.com.';
+  const d = Object.fromEntries(new FormData(join));
+  const nato = new Date(d.nascita);
+  const diciotto = new Date(nato.getFullYear() + 18, nato.getMonth(), nato.getDate());
+  if (diciotto > new Date()) {
+    joinMsg.textContent = 'Dal sito ci si tessera da maggiorenni. Se hai meno di 18 anni scrivici a locus.parma@gmail.com.';
+    return;
+  }
+  const righe = [
+    'Ciao Locus, chiedo di tesserarmi.', '',
+    `Nome: ${d.nome}`, `Cognome: ${d.cognome}`,
+    `Data di nascita: ${nato.toLocaleDateString('it-IT')}`, `Luogo di nascita: ${d.luogo}`,
+    `Codice fiscale: ${d.cf.toUpperCase()}`, `Comune di residenza: ${d.residenza}`,
+    `Email: ${d.email}`, `Telefono: ${d.telefono || ''}`, '',
+    'Dichiaro di avere più di 18 anni, di aver letto lo statuto e acconsento al trattamento dei dati per il tesseramento.',
+  ];
+  const oggetto = `Richiesta di tesseramento: ${d.nome} ${d.cognome}`;
+  location.href = `mailto:locus.parma@gmail.com?subject=${encodeURIComponent(oggetto)}&body=${encodeURIComponent(righe.join('
+'))}`;
+  joinMsg.textContent = "Si è aperta la tua app di posta con la richiesta già scritta: premi invia. Se non si apre nulla, scrivi a locus.parma@gmail.com.";
 });
 
