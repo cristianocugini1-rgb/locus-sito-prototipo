@@ -225,8 +225,9 @@ const bubble = new THREE.Mesh(
       varying vec3 vN; varying vec3 vV; varying vec3 vP;
       // la deformazione: onde larghe e lente, come una bolla vera spinta dall'aria, più increspature fini
       float disp(vec3 n){
-        float big = sin(n.x * 2.1 + uTime * 0.4) * 0.028 + sin(n.y * 2.6 - uTime * 0.32) * 0.024 + sin(n.z * 1.9 + n.x * 1.3 + uTime * 0.36) * 0.02;
-        float fine = sin(n.y * 6.4 + uTime * 0.9) * 0.004 + sin(n.x * 9.0 - uTime * 0.7) * 0.003;
+        // metà del movimento della prima versione
+        float big = sin(n.x * 2.1 + uTime * 0.55) * 0.035 + sin(n.y * 2.6 - uTime * 0.43) * 0.03 + sin(n.z * 1.9 + n.x * 1.3 + uTime * 0.48) * 0.025;
+        float fine = sin(n.y * 6.4 + uTime * 1.1) * 0.004 + sin(n.x * 9.0 - uTime * 0.85) * 0.003;
         return (big + fine) * uWobble;
       }
       vec3 shape(vec3 x){ vec3 n = normalize(x); return n * (2.9 + disp(n)); }
@@ -303,10 +304,10 @@ hero.add(drops);
 /* 2. I TRE ANELLI in cui si entra scorrendo                           */
 /* ------------------------------------------------------------------ */
 const RINGS = [
-  // luci calde: crema, ambra, bianco caldo, tutte con la luminosità che aveva il terzo cerchio; il rosso resta solo alla L
-  { z: -14, color: new THREE.Color('#ffd9a8'), metal: '#c9a982', mood: 0.35, glow: 1 },
-  { z: -32, color: new THREE.Color('#ffa94a'), metal: '#c49058', mood: 0.7, glow: 1 },
-  { z: -50, color: new THREE.Color('#ffe6c4'), metal: '#d6c6ae', mood: 0.5, glow: 1 },
+  // tutti e tre crema, e la luce cresce da un cerchio all'altro: 40%, 70%, 100%; il rosso resta solo alla L
+  { z: -14, color: new THREE.Color('#ffd9a8'), metal: '#c9a982', mood: 0.35, glow: 0.4 },
+  { z: -32, color: new THREE.Color('#ffd9a8'), metal: '#c9a982', mood: 0.7, glow: 0.7 },
+  { z: -50, color: new THREE.Color('#ffd9a8'), metal: '#c9a982', mood: 0.5, glow: 1 },
 ];
 // fascio di luce: pieno dove guarda la camera, sfuma sui bordi, con la luce che scorre lungo il cerchio
 const beamVS = /* glsl */ `
