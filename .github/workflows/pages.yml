@@ -3,6 +3,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # ogni sei ore si ripubblica, così i post di Instagram restano aggiornati
+  schedule:
+    - cron: '17 */6 * * *'
 permissions:
   contents: read
   pages: write
@@ -20,6 +23,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: node scripts/aggiorna-instagram.mjs
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -1,0 +1,16 @@
+{
+  "aggiornato": null,
+  "nota": "Copia di riserva con foto già nel sito. Quando c'è il token di Instagram, scripts/aggiorna-instagram.mjs la sostituisce con gli ultimi post veri a ogni pubblicazione.",
+  "post": [
+    { "img": "img/tavoli-cibo.jpg", "alt": "La Grande Bolla vol. 11: Il Cibo", "link": "https://www.instagram.com/locus_parma/" },
+    { "img": "img/locandina-cibo.jpg", "alt": "La locandina della Grande Bolla Il Cibo", "link": "https://www.instagram.com/locus_parma/" },
+    { "img": "img/grazie-bolla-11.jpg", "alt": "Grazie a chi c'era alla Grande Bolla vol. 11", "link": "https://www.instagram.com/locus_parma/" },
+    { "img": "img/carosello-movida.jpg", "alt": "Il carosello di Locus sulla movida a Parma", "link": "https://www.instagram.com/locus_parma/" },
+    { "img": "img/carosello-costo.jpg", "alt": "Il carosello sul costo della vita", "link": "https://www.instagram.com/locus_parma/" },
+    { "img": "img/carosello-lavoro.jpg", "alt": "Il carosello sul lavoro", "link": "https://www.instagram.com/locus_parma/" },
+    { "img": "img/meetup.jpg", "alt": "Il Meet Up di Locus", "link": "https://www.instagram.com/locus_parma/" },
+    { "img": "img/ospiti-bolla.jpg", "alt": "Gli ospiti sul palco della Grande Bolla", "link": "https://www.instagram.com/locus_parma/" },
+    { "img": "img/locandina-bellezza.jpg", "alt": "La locandina della Grande Bolla La Bellezza", "link": "https://www.instagram.com/locus_parma/" },
+    { "img": "img/giovedi-talk-drinks.jpg", "alt": "Il Giovedì del Locus", "link": "https://www.instagram.com/locus_parma/" }
+  ]
+}

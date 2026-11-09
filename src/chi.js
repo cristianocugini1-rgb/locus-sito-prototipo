@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import Lenis from 'lenis';
 import { Ambient } from './audio.js';
+import { FORMATI } from './formati.js';
 
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -34,7 +35,7 @@ const io = new IntersectionObserver((entries) => {
     if (!en.isIntersecting) return;
     let id = en.target.id;
     if (id === 'vuoto') id = 'chi';
-    if (id === 'squadra') id = 'contatti';
+    if (id === 'squadra' || id === 'instagram') id = 'contatti';
     links.forEach((a) => a.classList.remove('on'));
     links.get(id)?.classList.add('on');
     tone.target = +(en.target.dataset.tone || 0);
@@ -92,15 +93,17 @@ $$('#upcoming [data-date]').forEach((a) => {
 /* binario dei format: si trascina                                     */
 /* ------------------------------------------------------------------ */
 const rail = $('#rail');
-let drag = null;
+let drag = null, railMoved = 0;
 rail.addEventListener('pointerdown', (e) => {
   if (e.pointerType !== 'mouse') return;
   drag = { x: e.clientX, s: rail.scrollLeft, v: 0, last: e.clientX };
+  railMoved = 0;
   rail.classList.add('drag');
 });
 addEventListener('pointermove', (e) => {
   if (!drag) return;
   drag.v = e.clientX - drag.last;
+  railMoved = Math.max(railMoved, Math.abs(e.clientX - drag.x));
   drag.last = e.clientX;
   rail.scrollLeft = drag.s - (e.clientX - drag.x);
 });
@@ -289,3 +292,161 @@ $$('[data-dissolve]').forEach((a) => {
     wait.then(() => { location.href = a.href; });
   });
 });
+
+/* ------------------------------------------------------------------ */
+/* la scheda di un format: si apre dalla carta e riempie lo schermo     */
+/* ------------------------------------------------------------------ */
+const sheet = $('#sheet');
+const sheetScroll = $('.sheet-scroll', sheet);
+const sheetBody = $('.sheet-body', sheet);
+let sheetOpen = false, lastCard = null;
+
+function sheetHTML(f) {
+  const steps = f.steps ? `
+    <div class="sh-block" data-sr><p class="kicker">${f.stepsTitle}</p>
+      <ol class="sh-steps">${f.steps.map(([h, p], i) => `<li data-sr style="--d:${0.08 * i}s"><span>${String(i + 1).padStart(2, '0')}</span><h3>${h}</h3>${p ? `<p>${p}</p>` : ''}</li>`).join('')}</ol></div>` : '';
+  const nums = f.numbers ? `
+    <div class="sh-block" data-sr>${f.numbersTitle ? `<p class="kicker">${f.numbersTitle}</p>` : ''}
+      <div class="sh-nums">${f.numbers.map(([n, l], i) => `<div data-sr style="--d:${0.1 * i}s"><b>${n}</b><span>${l}</span></div>`).join('')}</div></div>` : '';
+  const quote = f.quote ? `<blockquote class="sh-quote" data-sr>${f.quote}</blockquote>` : '';
+  const dates = f.dates ? `
+    <div class="sh-block" data-sr><p class="kicker">Le date</p>
+      <ol class="sh-dates">${f.dates.map(([d, h, p], i) => `<li data-sr style="--d:${0.08 * i}s"><time>${d}</time><h3>${h}</h3><p>${p}</p></li>`).join('')}</ol></div>` : '';
+  const photos = f.photos ? `
+    <div class="sh-photos" data-sr>${f.photos.map((src, i) => `<figure style="--k:${(i % 3) - 1}"><img src="${src}" alt="" loading="lazy" /></figure>`).join('')}</div>` : '';
+  const cta = f.cta ? `<div class="sh-cta" data-sr>${f.cta.map(([l, h]) => `<a href="${h}" ${h.startsWith('http') ? 'target="_blank" rel="noopener"' : 'data-sheet-go'}>${l}</a>`).join('')}</div>` : '';
+  return `
+    <header class="sh-hero">
+      <div class="sh-cover"><img src="${f.cover}" alt="" /></div>
+      <div class="sh-head">
+        <p class="when">${f.kicker}</p>
+        <h2 class="display sh-title">${f.title.split(' ').map((w, i) => `<span class="w"><span style="--i:${i}">${w}</span></span>`).join(' ')}</h2>
+        <p class="lead">${f.lead}</p>
+      </div>
+    </header>
+    <div class="sh-content">${steps}${nums}${quote}${dates}${photos}<p class="source">${f.source}</p>${cta}</div>`;
+}
+
+const sheetIO = new IntersectionObserver((en) => en.forEach((e) => { if (e.isIntersecting) e.target.classList.add('in'); }), { root: sheetScroll, rootMargin: '0px 0px -8% 0px' });
+
+function openSheet(card) {
+  const f = FORMATI[card.dataset.format];
+  if (!f || sheetOpen) return;
+  lastCard = card;
+  sheetBody.innerHTML = sheetHTML(f);
+  sheetScroll.scrollTop = 0;
+  sheet.style.setProperty('--sy', 0);
+  // la scheda si apre dal rettangolo della carta
+  const r = card.getBoundingClientRect();
+  sheet.style.setProperty('--clip', `inset(${r.top}px ${innerWidth - r.right}px ${innerHeight - r.bottom}px ${r.left}px round 4px)`);
+  sheet.classList.remove('open');
+  sheet.classList.add('show');
+  void sheet.offsetWidth;
+  requestAnimationFrame(() => requestAnimationFrame(() => sheet.classList.add('open')));
+  sheet.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('sheet-on');
+  sheetOpen = true;
+  lenis.stop();
+  $$('[data-sr]', sheetBody).forEach((el) => sheetIO.observe(el));
+  $$('[data-sheet-go]', sheetBody).forEach((a) => a.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeSheet();
+    setTimeout(() => lenis.scrollTo(a.getAttribute('href'), { duration: 1.8, offset: -40 }), 700);
+  }));
+  if (audio.ctx) audio.bell(0.08);
+  setTimeout(() => $('.sheet-x', sheet).focus({ preventScroll: true }), 500);
+}
+function closeSheet() {
+  if (!sheetOpen) return;
+  sheetOpen = false;
+  sheet.classList.remove('open');
+  sheet.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('sheet-on');
+  lenis.start();
+  setTimeout(() => { if (!sheetOpen) { sheet.classList.remove('show'); sheetBody.innerHTML = ''; } }, 900);
+  lastCard?.focus({ preventScroll: true });
+}
+$$('.card[data-format]').forEach((c) => {
+  c.addEventListener('click', () => { if (railMoved < 8) openSheet(c); });
+  c.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSheet(c); } });
+});
+$('.sheet-x', sheet).addEventListener('click', closeSheet);
+addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
+// nella scheda la copertina si allontana scorrendo
+sheetScroll.addEventListener('scroll', () => {
+  sheet.style.setProperty('--sy', sheetScroll.scrollTop.toFixed(1));
+}, { passive: true });
+// sul telefono: trascinando in giù dalla cima la scheda si chiude
+let pull = null;
+sheetScroll.addEventListener('touchstart', (e) => { pull = sheetScroll.scrollTop <= 0 ? e.touches[0].clientY : null; }, { passive: true });
+sheetScroll.addEventListener('touchmove', (e) => {
+  if (pull === null) return;
+  const d = e.touches[0].clientY - pull;
+  sheetBody.style.transform = d > 0 ? `translateY(${(d * 0.4).toFixed(1)}px)` : '';
+  if (d > 140) { pull = null; sheetBody.style.transform = ''; closeSheet(); }
+}, { passive: true });
+sheetScroll.addEventListener('touchend', () => { pull = null; sheetBody.style.transform = ''; });
+
+/* ------------------------------------------------------------------ */
+/* gli ultimi post di Instagram, da scorrere                           */
+/* ------------------------------------------------------------------ */
+const strip = $('#strip');
+const IG = 'https://www.instagram.com/locus_parma/';
+const fmtData = (iso) => new Date(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+fetch(`${import.meta.env.BASE_URL}instagram.json`, { cache: 'no-cache' })
+  .then((r) => r.json())
+  .then(({ post }) => buildStrip(post || []))
+  .catch(() => buildStrip([]));
+
+function buildStrip(post) {
+  const B = import.meta.env.BASE_URL;
+  strip.innerHTML = post.map((p) => `
+    <a class="post" href="${esc(p.link || IG)}" target="_blank" rel="noopener">
+      <span class="pimg"><img src="${B}${esc(p.img)}" alt="${esc(p.alt || '')}" loading="lazy" draggable="false" /></span>
+      ${p.data || p.caption ? `<span class="pcap">${p.data ? `<time>${fmtData(p.data)}</time>` : ''}${p.caption ? `<em>${esc(p.caption)}</em>` : ''}</span>` : ''}
+      ${p.video ? '<i class="pvideo"></i>' : ''}
+    </a>`).join('') + `
+    <a class="post end" href="${IG}" target="_blank" rel="noopener"><span>Tutto il resto è su Instagram</span><b>@locus_parma</b><i>↗</i></a>`;
+  stripMotion();
+}
+
+function stripMotion() {
+  // col mouse si trascina, col dito scorre normale
+  let hold = null, moved = 0, v = 0;
+  strip.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'mouse') return;
+    hold = { x: e.clientX, s: strip.scrollLeft, last: e.clientX }; moved = 0; v = 0;
+    strip.classList.add('drag');
+  });
+  addEventListener('pointermove', (e) => {
+    if (!hold) return;
+    v = e.clientX - hold.last; hold.last = e.clientX;
+    moved = Math.max(moved, Math.abs(e.clientX - hold.x));
+    strip.scrollLeft = hold.s - (e.clientX - hold.x);
+  });
+  addEventListener('pointerup', () => {
+    if (!hold) return;
+    hold = null;
+    (function glide() { v *= 0.94; strip.scrollLeft -= v; if (Math.abs(v) > 0.4) requestAnimationFrame(glide); else strip.classList.remove('drag'); })();
+  });
+  strip.addEventListener('click', (e) => { if (moved > 8) { e.preventDefault(); moved = 0; } }, true);
+}
+
+/* ------------------------------------------------------------------ */
+/* tesserati: il modulo, in prova finché non si decide dove arrivano i dati */
+/* ------------------------------------------------------------------ */
+const join = $('#join');
+const joinMsg = $('#join-msg');
+join.addEventListener('submit', (e) => {
+  e.preventDefault();
+  if (!join.checkValidity()) {
+    join.classList.add('tried');
+    joinMsg.textContent = 'Mancano alcuni campi: sono segnati in rosso.';
+    join.querySelector(':invalid')?.focus();
+    return;
+  }
+  // nessun dato parte da qui: il collegamento si fa quando è deciso dove devono arrivare le richieste
+  joinMsg.textContent = 'Il modulo è ancora in prova e non invia nulla. Per tesserarti scrivici a locus.parma@gmail.com.';
+});
+

@@ -15,9 +15,10 @@ html, body {
 html.lenis, html.lenis body { height: auto; }
 .lenis.lenis-smooth { scroll-behavior: auto !important; }
 body.locked { overflow: hidden; }
+html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
 @media (hover: hover) { body, a, button { cursor: none; } }
 
-#scroll { height: 1100vh; }
+#scroll { height: 1100vh; height: 1100svh; }
 #gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
 
 .ui { position: fixed; inset: 0; pointer-events: none; }
@@ -183,4 +184,22 @@ body.locked { overflow: hidden; }
 }
 #topnav a:hover { opacity: 1; }
 #topnav a:hover::after { transform: scaleX(1); transform-origin: left; }
-@media (max-width: 700px) { #topnav { gap: 14px; right: 60px; } #topnav a { font-size: 10px; letter-spacing: .14em; } #topnav a:nth-child(2), #topnav a:nth-child(4) { display: none; } }
+#topnav a.hl { color: var(--lime); opacity: .95; }
+#topnav a.hl::after { background: var(--lime); }
+
+/* telefono */
+@media (max-width: 700px) {
+  #topnav { left: 18px; right: 52px; top: calc(16px + env(safe-area-inset-top)); gap: 0; justify-content: space-between; }
+  #topnav a { font-size: 10px; letter-spacing: .12em; }
+  #topnav a:nth-child(2) { display: none; }
+  #sound { top: calc(20px + env(safe-area-inset-top)); right: 14px; }
+  .hero { left: 7vw; right: 7vw; bottom: calc(12vh + env(safe-area-inset-bottom)); }
+  .title { font-size: clamp(50px, 15vw, 80px); }
+  .title.small { font-size: clamp(40px, 11vw, 64px); }
+  .ring-label { left: 7vw; bottom: 14vh; }
+  .gallery-label { left: 7vw; top: 13vh; }
+  .batt-label { right: 7vw; bottom: 13vh; }
+  .gos { flex-direction: column; align-items: stretch; width: min(78vw, 320px); }
+  .go { text-align: center; }
+  .mirino b { font-size: 36px; }
+}

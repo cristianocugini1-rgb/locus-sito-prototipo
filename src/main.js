@@ -197,7 +197,7 @@ const corners = [];
 });
 hero.add(brackets);
 
-// la bolla: bordo iridescente, centro trasparente, superficie che respira
+// la bolla: trasparente, con un velo chiaro sul bordo e la superficie che respira
 const bubbleUniforms = { uTime: { value: 0 }, uWobble: { value: 1 }, uPop: { value: 0 } };
 const bubble = new THREE.Mesh(
   new THREE.SphereGeometry(2.9, 96, 96),
@@ -222,15 +222,19 @@ const bubble = new THREE.Mesh(
     fragmentShader: /* glsl */ `
       uniform float uTime, uPop;
       varying vec3 vN; varying vec3 vV; varying vec3 vP;
-      vec3 irid(float t){ return 0.5 + 0.5*cos(6.2831*(t + vec3(0.0, 0.18, 0.38))); }
+      // bolla trasparente: niente arcobaleno, solo un velo chiaro sul bordo, i riflessi dello studio e due punti luce
       void main(){
-        float f = pow(1.0 - abs(dot(vN, vV)), 2.4);
-        vec3 c = irid(f*1.3 + vP.y*0.12 + uTime*0.04);
-        c = mix(c, vec3(1.0, 0.72, 0.55), 0.35);          // scaldata verso il crema
+        float ndv = abs(dot(vN, vV));
+        float f = pow(1.0 - ndv, 3.2);
+        float rim = smoothstep(0.62, 1.0, 1.0 - ndv);
+        vec3 r = reflect(-vV, vN);
+        float window = smoothstep(0.35, 0.9, r.y) * smoothstep(-0.2, 0.5, r.z) * 0.22;   // la finestra di luce in alto
+        float floorL = smoothstep(0.4, 0.95, -r.y) * 0.06;                                // il rimbalzo caldo dal basso
+        vec3 c = vec3(1.0, 0.97, 0.93) * (0.55 + f * 0.6) + vec3(1.0, 0.45, 0.25) * floorL;
         vec3 l = normalize(vec3(0.5, 0.7, 0.6));
-        float spec = pow(max(dot(reflect(-l, vN), vV), 0.0), 420.0) * 1.6 + pow(max(dot(reflect(-normalize(vec3(-0.6, 0.2, 0.7)), vN), vV), 0.0), 900.0) * 0.8;
-        float a = (f * 0.75 + 0.03) * (1.0 - uPop);
-        gl_FragColor = vec4(c * (0.6 + f) + spec * 1.8, a + spec*(1.0-uPop));
+        float spec = pow(max(dot(reflect(-l, vN), vV), 0.0), 420.0) * 1.8 + pow(max(dot(reflect(-normalize(vec3(-0.6, 0.2, 0.7)), vN), vV), 0.0), 900.0) * 0.9;
+        float a = (f * 0.3 + rim * 0.08 + window * f + floorL + 0.008) * (1.0 - uPop);
+        gl_FragColor = vec4(c + spec * 2.0, a + spec * (1.0 - uPop));
       }`,
   })
 );
@@ -628,6 +632,28 @@ function updateSparks(dt) {
 }
 
 /* ------------------------------------------------------------------ */
+/* schermi verticali (telefono): campo visivo più largo e scena in scala */
+/* ------------------------------------------------------------------ */
+const TAN_V = Math.tan(THREE.MathUtils.degToRad(22.5));
+let tanV = TAN_V, focusScale = 1.05;
+function fit() {
+  const a = innerWidth / innerHeight;
+  // in verticale si allarga il campo finché la scena non sta in larghezza
+  tanV = a < 1 ? Math.max(TAN_V, 0.31 / a) : TAN_V;
+  camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(tanV));
+  camera.aspect = a;
+  camera.updateProjectionMatrix();
+  hero.scale.setScalar(a < 0.8 ? 0.8 : 1);
+  // il nastro largo 13,5 deve stare nella vista a 10 di distanza
+  const gs = clamp((2 * 10 * tanV * a * 0.96) / 13.5, 0.42, 1);
+  gallery.scale.setScalar(gs);
+  // foto ingrandita: riempie la vista, anche in verticale
+  const H = 2 * 6.1 * tanV, W = H * a;
+  focusScale = Math.min((0.88 * W) / PW, (0.8 * H) / PH) / gs;
+}
+fit();
+
+/* ------------------------------------------------------------------ */
 /* scroll morbido, audio, interfaccia                                  */
 /* ------------------------------------------------------------------ */
 const lenis = new Lenis({ lerp: 0.07, smoothWheel: true, syncTouch: true, syncTouchLerp: 0.075 });
@@ -641,6 +667,7 @@ const layers = {
   hero: $('l-hero'), r: [$('l-r1'), $('l-r2'), $('l-r3')], gal: $('l-gal'), batt: $('l-batt'), end: $('l-end'),
 };
 const goLinks = [...document.querySelectorAll('.go')];
+if (isTouch) document.querySelectorAll('[data-touch]').forEach((el) => { el.textContent = el.dataset.touch; });
 
 // ?muto nell'indirizzo: il sito parte senza suono (serve per le prove)
 const MUTE = new URLSearchParams(location.search).has('muto');
@@ -681,11 +708,16 @@ const mouse = new THREE.Vector2(0, 0);
 const mouseS = new THREE.Vector2(0, 0);
 const cur = { x: innerWidth / 2, y: innerHeight / 2, tx: innerWidth / 2, ty: innerHeight / 2 };
 let pointerSeen = false;
-addEventListener('pointermove', (e) => {
+let lastTouch = -1e9;
+const onPointer = (e) => {
   mouse.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   cur.tx = e.clientX; cur.ty = e.clientY;
   pointerSeen = true;
-});
+  if (e.pointerType !== 'mouse') lastTouch = performance.now();
+};
+addEventListener('pointermove', onPointer);
+addEventListener('pointerdown', onPointer);
+
 const ray = new THREE.Raycaster();
 const battPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -battZ);
 const tmpV = new THREE.Vector3();
@@ -896,7 +928,7 @@ function frame(time) {
       tmpV.set(camera.position.x, camera.position.y, cz - 6.1);
       m.parent.worldToLocal(tmpV);
       m.position.lerpVectors(ud.base, tmpV, ease(ud.focus));
-      m.scale.setScalar(1 + ud.hover * 0.04 + ud.focus * 0.05);
+      m.scale.setScalar((1 + ud.hover * 0.04) * lerp(1, focusScale, ease(ud.focus)));
     });
     if (hit) hot = true;
     if (focused) hot = true;
@@ -960,8 +992,7 @@ requestAnimationFrame(frame);
 if (import.meta.env.DEV) window.__dbg = { scene, renderer, composer, backGlow, lMesh, lMat, bubble, setPR };
 
 addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
+  fit();
   renderer.setSize(innerWidth, innerHeight);
   composer.setSize(innerWidth, innerHeight);
   bloom.resolution.set(innerWidth / 2, innerHeight / 2);

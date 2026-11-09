@@ -2,7 +2,8 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#140404" />
   <title>Locus · Chi siamo</title>
   <meta name="description" content="Locus, cultura urbana e comunità a Parma. Un media, una comunità, una voce per gli under 35." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -22,6 +23,7 @@
       <a href="#format">Format</a>
       <a href="#eventi">Eventi</a>
       <a href="#futuro">Futuro</a>
+      <a href="#tesserati" class="hl">Tesserati</a>
       <a href="#contatti">Contatti</a>
     </nav>
     <button id="sound" aria-label="suono"><i></i><i></i><i></i><i></i></button>
@@ -98,27 +100,31 @@
     <section id="format" class="block" data-tone="1">
       <p class="kicker" data-r>Incontra</p>
       <h2 class="title" data-split>I format.</h2>
-      <p class="lead narrow" data-r>Trascina, o scorri di lato.</p>
+      <p class="lead narrow" data-r>Trascina, o scorri di lato. Tocca un format per aprirlo.</p>
       <div class="rail" id="rail">
-        <article class="card"><span class="ph" style="background-image:url(img/meetup.jpg)"></span>
+        <article class="card" data-format="meetup" tabindex="0" role="button"><span class="ph" style="background-image:url(img/meetup.jpg)"></span>
           <p class="when">Il primo sabato del mese</p>
           <h3>Il Meet Up</h3>
           <p>La porta d'ingresso di Locus: un appuntamento al mese, aperto a tutti. Ci si conosce, si lavora insieme ai tavoli e si chiude nella stessa giornata. Chi vuole resta: si tessera, diventa volontario, propone un progetto.</p>
+          <span class="open">apri <i>+</i></span>
         </article>
-        <article class="card hot"><span class="ph" style="background-image:url(img/ospiti-bolla.jpg)"></span>
+        <article class="card hot" data-format="bolla" tabindex="0" role="button"><span class="ph" style="background-image:url(img/ospiti-bolla.jpg)"></span>
           <p class="when">150 persone a serata</p>
           <h3>La Grande Bolla</h3>
           <p>Conversazioni urbane per uscire dalla propria bolla. Un tema per sera, tavoli di persone che di solito non si incontrano, un menù di tre posizioni da cui partire, il palco con tre ospiti, il microfono che gira in sala.</p>
+          <span class="open">apri <i>+</i></span>
         </article>
-        <article class="card"><span class="ph" style="background-image:url(img/evento-tavoli.jpg)"></span>
+        <article class="card" data-format="debate" tabindex="0" role="button"><span class="ph" style="background-image:url(img/evento-tavoli.jpg)"></span>
           <p class="when">Da novembre 2026</p>
           <h3>Speed Debate</h3>
           <p>Conoscersi discutendo, dopocena, a tavolini da due. Tre round da 15 minuti, ognuno con una persona nuova. Una carta per round. Zero telefoni in vista. Alla fine, due ospiti con idee opposte sul palco.</p>
+          <span class="open">apri <i>+</i></span>
         </article>
-        <article class="card"><span class="ph" style="background-image:url(img/giovedi-talk-drinks.jpg)"></span>
+        <article class="card" data-format="giovedi" tabindex="0" role="button"><span class="ph" style="background-image:url(img/giovedi-talk-drinks.jpg)"></span>
           <p class="when">Serate aperte</p>
           <h3>Il Giovedì del Locus</h3>
           <p>Una serata senza fretta, per conoscersi e ritrovarsi. Musica, ospiti, e tante birrette insieme.</p>
+          <span class="open">apri <i>+</i></span>
         </article>
       </div>
     </section>
@@ -207,6 +213,41 @@
       </div></div>
     </section>
 
+    <!-- TESSERATI -->
+    <section id="tesserati" class="block join" data-tone="3">
+      <p class="kicker" data-r>Tesserati</p>
+      <h2 class="title" data-split>Entra in Locus.</h2>
+      <p class="lead narrow" data-r>Con la tessera diventi socio: voti in assemblea, proponi progetti, costruisci Locus con noi.</p>
+      <div class="join-grid">
+        <ol class="join-why" data-r>
+          <li><b>01</b><div><h3>Voti</h3><p>L'assemblea dei soci elegge il direttivo e approva bilancio e linee di indirizzo.</p></div></li>
+          <li><b>02</b><div><h3>Proponi</h3><p>Puoi proporre un progetto coerente con la missione di Locus.</p></div></li>
+          <li><b>03</b><div><h3>Partecipi</h3><p>Puoi entrare tra i volontari, su comunicazione, organizzazione ed eventi.</p></div></li>
+          <li class="fee"><span>Quota associativa</span><b>[quota da confermare]</b><span>[durata della tessera da confermare]</span></li>
+        </ol>
+        <form class="join-form" id="join" data-r style="--d:.15s" novalidate>
+          <div class="row">
+            <label><span>Nome</span><input name="nome" autocomplete="given-name" required /></label>
+            <label><span>Cognome</span><input name="cognome" autocomplete="family-name" required /></label>
+          </div>
+          <div class="row">
+            <label><span>Data di nascita</span><input name="nascita" type="date" autocomplete="bday" required /></label>
+            <label><span>Luogo di nascita</span><input name="luogo" required /></label>
+          </div>
+          <label><span>Codice fiscale</span><input name="cf" autocomplete="off" maxlength="16" pattern="[A-Za-z0-9]{16}" required /></label>
+          <label><span>Comune di residenza</span><input name="residenza" autocomplete="address-level2" required /></label>
+          <div class="row">
+            <label><span>Email</span><input name="email" type="email" autocomplete="email" required /></label>
+            <label><span>Telefono</span><input name="telefono" type="tel" autocomplete="tel" /></label>
+          </div>
+          <label class="check"><input type="checkbox" name="statuto" required /><span>Ho letto lo statuto di Locus e chiedo di diventare socio. [link allo statuto]</span></label>
+          <label class="check"><input type="checkbox" name="privacy" required /><span>Acconsento al trattamento dei miei dati per il tesseramento. [link all'informativa privacy]</span></label>
+          <button type="submit" class="send"><span>Invia la richiesta</span><i></i></button>
+          <p class="form-msg" id="join-msg" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+
     <!-- CONTATTI -->
     <section id="contatti" class="block contacts" data-tone="0">
       <p class="kicker" data-r>Contatti</p>
@@ -216,12 +257,18 @@
         <a data-r href="mailto:locus.parma@gmail.com"><span>Email</span><b>locus.parma@gmail.com</b></a>
         <a data-r style="--d:.1s" href="https://www.instagram.com/locus_parma/" target="_blank" rel="noopener"><span>Instagram</span><b>@locus_parma</b></a>
       </div>
-      <div class="ig" data-r>
-        <a href="https://www.instagram.com/locus_parma/" target="_blank" rel="noopener"><img src="/img/tavoli-cibo.jpg" alt="La Grande Bolla Il Cibo" loading="lazy" /></a>
-        <a href="https://www.instagram.com/locus_parma/" target="_blank" rel="noopener"><img src="/img/giovedi-talk-drinks.jpg" alt="Il Giovedì del Locus" loading="lazy" /></a>
-        <a href="https://www.instagram.com/locus_parma/" target="_blank" rel="noopener"><img src="/img/meetup.jpg" alt="Il Meet Up di Locus" loading="lazy" /></a>
-        <a href="https://www.instagram.com/locus_parma/" target="_blank" rel="noopener"><img src="/img/ospiti-bolla.jpg" alt="Ospiti sul palco della Grande Bolla" loading="lazy" /></a>
+    </section>
+
+    <!-- INSTAGRAM -->
+    <section id="instagram" class="block insta" data-tone="1">
+      <div class="insta-head">
+        <div>
+          <p class="kicker" data-r>Gli ultimi post</p>
+          <h2 class="title" data-split>@locus_parma</h2>
+        </div>
+        <a class="follow" data-r href="https://www.instagram.com/locus_parma/" target="_blank" rel="noopener"><span>Seguici su Instagram</span><i>↗</i></a>
       </div>
+      <div class="strip" id="strip" aria-label="Gli ultimi post di Instagram"></div>
     </section>
   </main>
 
@@ -230,6 +277,14 @@
     <p>Associazione Locus · cultura urbana e comunità · APS iscritta al RUNTS · Parma</p>
     <a href="./" data-dissolve>torna all'inizio</a>
   </footer>
+
+  <!-- la scheda di un format -->
+  <div id="sheet" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="sheet-scroll" data-lenis-prevent>
+      <button class="sheet-x" aria-label="chiudi"><span></span><span></span></button>
+      <div class="sheet-body"></div>
+    </div>
+  </div>
 
   <div id="cursor"><span></span><span></span><span></span><span></span></div>
   <div class="grain"></div>
