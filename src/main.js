@@ -302,9 +302,10 @@ hero.add(drops);
 /* 2. I TRE ANELLI in cui si entra scorrendo                           */
 /* ------------------------------------------------------------------ */
 const RINGS = [
-  { z: -14, color: new THREE.Color('#f2603f'), metal: '#a8604a', mood: 0.35, glow: 0.5 }, // il primo, più morbido: un rosso caldo, non aggressivo
-  { z: -32, color: new THREE.Color('#ff8a24'), metal: '#c49058', mood: 0.7 },
-  { z: -50, color: new THREE.Color('#ffe6c4'), metal: '#d6c6ae', mood: 0.5 },
+  // luci calde come lampadine di una piazza di sera: crema, ambra, bianco caldo; il rosso resta solo alla L
+  { z: -14, color: new THREE.Color('#ffd9a8'), metal: '#c9a982', mood: 0.35, glow: 0.38 },
+  { z: -32, color: new THREE.Color('#ffa94a'), metal: '#c49058', mood: 0.7, glow: 0.55 },
+  { z: -50, color: new THREE.Color('#fff1dc'), metal: '#d6c6ae', mood: 0.5, glow: 0.32 },
 ];
 // fascio di luce: pieno dove guarda la camera, sfuma sui bordi, con la luce che scorre lungo il cerchio
 const beamVS = /* glsl */ `
