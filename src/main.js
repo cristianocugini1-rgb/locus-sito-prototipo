@@ -65,21 +65,6 @@ function studioEnv() {
   return pmrem.fromScene(s, 0).texture;
 }
 scene.environment = studioEnv();
-// per le ghiere dei cerchi uno studio senza luci rosse: l'oro riflette solo luce calda e chiara
-function goldEnv() {
-  const s = new THREE.Scene();
-  s.background = new THREE.Color('#0d0806');
-  const light = (w, h, color, k, pos) => {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(k), side: THREE.DoubleSide }));
-    m.position.set(...pos); m.lookAt(0, 0, 0); s.add(m);
-  };
-  light(8, 1.4, '#ffe9cc', 3.5, [0, 5, 2.5]);
-  light(0.6, 7, '#fff4e4', 4, [-5, 0, 3]);
-  light(0.6, 7, '#ffdcae', 3.5, [5, 0.5, 1.5]);
-  light(10, 10, '#4a3420', 0.6, [0, -5, 0]);
-  return pmrem.fromScene(s, 0.02).texture;
-}
-const GOLD_ENV = goldEnv();
 
 const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
 camera.position.set(0, 0, 9);
@@ -352,12 +337,10 @@ RINGS.forEach((r, i) => {
   // fascio e alone: la luce del fascio corre in un verso, quella dell'alone nell'altro, come due braccia che si stringono
   const beam = new THREE.Mesh(new THREE.TorusGeometry(R_RING, 0.3, 48, 480), beamMat(r.color, 2.6, 0.85 * (r.glow || 1), i * 1.7));
   const haze = new THREE.Mesh(new THREE.TorusGeometry(R_RING, 1.2, 32, 240), beamMat(r.color, 5.5, 0.2 * (r.glow || 1), i * 1.7 + 0.6, -1));
-  // ghiera d'oro satinato, piatta come quella di un obiettivo: riflette solo luce calda, niente rosso
-  const metalMat = new THREE.MeshPhysicalMaterial({
-    color: '#e0bc7a', metalness: 1, roughness: 0.42, anisotropy: 0.6, envMap: GOLD_ENV, envMapIntensity: 1.1, transparent: true,
-  });
-  const band = new THREE.Mesh(new THREE.TorusGeometry(R_RING + 0.62, 0.06, 20, 480), metalMat);
-  band.scale.z = 4.5;
+  // il bordo non è più un oggetto: è un secondo filo di luce sottile, con un alone morbido che scorre al contrario
+  const metalMat = new THREE.MeshBasicMaterial({ color: r.color.clone().lerp(new THREE.Color('#ffffff'), 0.25).multiplyScalar(1.3 * (r.glow || 1)), transparent: true });
+  const band = new THREE.Mesh(new THREE.TorusGeometry(R_RING + 0.62, 0.012, 12, 480), metalMat);
+  const edgeBeam = new THREE.Mesh(new THREE.TorusGeometry(R_RING + 0.62, 0.14, 32, 480), beamMat(r.color, 3.0, 0.32 * (r.glow || 1), i * 1.7 + 1.1, -1));
   // tacche incise, una lunga ogni otto, come il mirino
   const TN = 96;
   const ticks = new THREE.InstancedMesh(new THREE.BoxGeometry(0.028, 0.14, 0.05), metalMat, TN);
@@ -384,10 +367,10 @@ RINGS.forEach((r, i) => {
     size: 0.045, map: DOT, color: r.color.clone().lerp(COL.crema, 0.55), transparent: true, opacity: 0.75,
     depthWrite: false, blending: THREE.AdditiveBlending,
   }));
-  g.add(band, haze, beam, core, grains); // senza tacche, come nella prova Abbraccio
+  g.add(edgeBeam, band, haze, beam, core, grains); // senza tacche, come nella prova Abbraccio
   g.rotation.z = i * 0.7;
   scene.add(g);
-  Object.assign(r, { group: g, core, beam, haze, ticks, grains, metalMat, flash: 0 });
+  Object.assign(r, { group: g, core, beam, haze, edgeBeam, ticks, grains, metalMat, flash: 0 });
 });
 
 /* ------------------------------------------------------------------ */
@@ -896,7 +879,7 @@ function frame(time) {
     r.flash *= 0.94;
     const fade = 1 - seg(Math.abs(d), 16, 44);
     const close = seg(Math.abs(d), 0.5, 7); // da vicino l'alone si ritira, sennò invade lo schermo
-    for (const m of [r.beam, r.haze]) {
+    for (const m of [r.beam, r.haze, r.edgeBeam]) {
       const u = m.material.uniforms;
       u.uTime.value = t; u.uFlash.value = r.flash;
       u.uFade.value = appear * fade * (m === r.haze ? lerp(0.08, 1, close) : lerp(0.45, 1, close));
