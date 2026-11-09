@@ -65,6 +65,21 @@ function studioEnv() {
   return pmrem.fromScene(s, 0).texture;
 }
 scene.environment = studioEnv();
+// per le ghiere dei cerchi uno studio senza luci rosse: l'oro riflette solo luce calda e chiara
+function goldEnv() {
+  const s = new THREE.Scene();
+  s.background = new THREE.Color('#0d0806');
+  const light = (w, h, color, k, pos) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(k), side: THREE.DoubleSide }));
+    m.position.set(...pos); m.lookAt(0, 0, 0); s.add(m);
+  };
+  light(8, 1.4, '#ffe9cc', 3.5, [0, 5, 2.5]);
+  light(0.6, 7, '#fff4e4', 4, [-5, 0, 3]);
+  light(0.6, 7, '#ffdcae', 3.5, [5, 0.5, 1.5]);
+  light(10, 10, '#4a3420', 0.6, [0, -5, 0]);
+  return pmrem.fromScene(s, 0.02).texture;
+}
+const GOLD_ENV = goldEnv();
 
 const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
 camera.position.set(0, 0, 9);
@@ -197,7 +212,7 @@ const corners = [];
 });
 hero.add(brackets);
 
-// la bolla di sapone: quasi invisibile, la forma che ondeggia, chiazze pastello che girano piano e un filo bianco sul contorno
+// la bolla di sapone: quasi invisibile, la forma che ondeggia appena, un filo bianco sul contorno
 const bubbleUniforms = { uTime: { value: 0 }, uWobble: { value: 1 }, uPop: { value: 0 } };
 const bubble = new THREE.Mesh(
   new THREE.SphereGeometry(2.9, 128, 128),
@@ -210,8 +225,8 @@ const bubble = new THREE.Mesh(
       varying vec3 vN; varying vec3 vV; varying vec3 vP;
       // la deformazione: onde larghe e lente, come una bolla vera spinta dall'aria, più increspature fini
       float disp(vec3 n){
-        float big = sin(n.x * 2.1 + uTime * 0.7) * 0.07 + sin(n.y * 2.6 - uTime * 0.55) * 0.06 + sin(n.z * 1.9 + n.x * 1.3 + uTime * 0.62) * 0.05;
-        float fine = sin(n.y * 6.4 + uTime * 1.4) * 0.008 + sin(n.x * 9.0 - uTime * 1.1) * 0.006;
+        float big = sin(n.x * 2.1 + uTime * 0.4) * 0.028 + sin(n.y * 2.6 - uTime * 0.32) * 0.024 + sin(n.z * 1.9 + n.x * 1.3 + uTime * 0.36) * 0.02;
+        float fine = sin(n.y * 6.4 + uTime * 0.9) * 0.004 + sin(n.x * 9.0 - uTime * 0.7) * 0.003;
         return (big + fine) * uWobble;
       }
       vec3 shape(vec3 x){ vec3 n = normalize(x); return n * (2.9 + disp(n)); }
@@ -232,33 +247,19 @@ const bubble = new THREE.Mesh(
     fragmentShader: /* glsl */ `
       uniform float uTime, uPop;
       varying vec3 vN; varying vec3 vV; varying vec3 vP;
-      float h(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
-      float noise(vec3 p){
-        vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
-        return mix(mix(mix(h(i), h(i + vec3(1,0,0)), f.x), mix(h(i + vec3(0,1,0)), h(i + vec3(1,1,0)), f.x), f.y),
-                   mix(mix(h(i + vec3(0,0,1)), h(i + vec3(1,0,1)), f.x), mix(h(i + vec3(0,1,1)), h(i + vec3(1,1,1)), f.x), f.y), f.z);
-      }
-      float fbm(vec3 p){ return noise(p) * 0.55 + noise(p * 2.03 + 3.1) * 0.3 + noise(p * 4.1 + 7.7) * 0.15; }
       void main(){
         float ndv = abs(dot(vN, vV));
         float edge = 1.0 - ndv;
-        // lo spessore del film di sapone: vortici lenti, e il sapone che scivola verso il basso
-        vec3 q = vP * 0.45 + vec3(sin(uTime * 0.11), uTime * 0.06, cos(uTime * 0.09));
-        float n = fbm(q + fbm(q * 1.6 + vec3(0.0, uTime * 0.05, 0.0)) * 1.4);
-        float thick = n * 1.5 + edge * 0.8 - vP.y * 0.06 + uTime * 0.015;
-        vec3 film = 0.5 + 0.5 * cos(6.2832 * (thick + vec3(0.0, 0.33, 0.67)));
-        film = mix(vec3(1.0), film, 0.38);                               // colori pastello, mai accesi
-        float patches = smoothstep(0.42, 0.8, n);                        // i colori stanno a chiazze, non dappertutto
-        float filmA = patches * pow(edge, 1.2) * 0.07 + pow(edge, 3.2) * 0.2;
+        // bolla trasparente: niente colori, solo luce bianca sul contorno, la finestra e i punti luce
+        float filmA = pow(edge, 3.6) * 0.12;                             // appena un velo verso il bordo
         float rim = smoothstep(0.82, 1.0, edge);                         // il filo bianco sul contorno
         vec3 r = reflect(-vV, vN);
         float win = smoothstep(0.5, 0.53, r.y) * (1.0 - smoothstep(0.64, 0.67, r.y))
                   * smoothstep(-0.5, -0.47, r.x) * (1.0 - smoothstep(-0.33, -0.3, r.x)) * step(0.0, r.z);   // la finestra, piccola
         vec3 l = normalize(vec3(0.5, 0.7, 0.6));
         float spec = pow(max(dot(reflect(-l, vN), vV), 0.0), 420.0) * 1.8 + pow(max(dot(reflect(-normalize(vec3(-0.6, 0.2, 0.7)), vN), vV), 0.0), 900.0) * 0.9;
-        vec3 c = mix(film, vec3(1.0), clamp(rim * 0.7 + win, 0.0, 1.0));
         float a = (filmA + rim * 0.35 + win * 0.75) * (1.0 - uPop);
-        gl_FragColor = vec4(c + spec, a + spec * (1.0 - uPop));
+        gl_FragColor = vec4(vec3(1.0) + spec, a + spec * (1.0 - uPop));
       }`,
   })
 );
@@ -302,10 +303,10 @@ hero.add(drops);
 /* 2. I TRE ANELLI in cui si entra scorrendo                           */
 /* ------------------------------------------------------------------ */
 const RINGS = [
-  // luci calde come lampadine di una piazza di sera: crema, ambra, bianco caldo; il rosso resta solo alla L
-  { z: -14, color: new THREE.Color('#ffd9a8'), metal: '#c9a982', mood: 0.35, glow: 0.38 },
-  { z: -32, color: new THREE.Color('#ffa94a'), metal: '#c49058', mood: 0.7, glow: 0.55 },
-  { z: -50, color: new THREE.Color('#fff1dc'), metal: '#d6c6ae', mood: 0.5, glow: 0.32 },
+  // luci calde: crema, ambra, bianco caldo, tutte con la luminosità che aveva il terzo cerchio; il rosso resta solo alla L
+  { z: -14, color: new THREE.Color('#ffd9a8'), metal: '#c9a982', mood: 0.35, glow: 1 },
+  { z: -32, color: new THREE.Color('#ffa94a'), metal: '#c49058', mood: 0.7, glow: 1 },
+  { z: -50, color: new THREE.Color('#ffe6c4'), metal: '#d6c6ae', mood: 0.5, glow: 1 },
 ];
 // fascio di luce: pieno dove guarda la camera, sfuma sui bordi, con la luce che scorre lungo il cerchio
 const beamVS = /* glsl */ `
@@ -318,21 +319,22 @@ const beamVS = /* glsl */ `
     gl_Position = projectionMatrix * viewMatrix * wp;
   }`;
 const beamFS = /* glsl */ `
-  uniform vec3 uColor; uniform float uTime, uPower, uGain, uFlash, uSeed, uFade;
+  uniform vec3 uColor; uniform float uTime, uPower, uGain, uFlash, uSeed, uFade, uDir;
   varying vec3 vN; varying vec3 vV; varying vec3 vP;
   void main(){
+    float uT = uTime * uDir;
     float facing = abs(dot(normalize(vN), normalize(vV)));
     float body = pow(facing, uPower);
     float a = atan(vP.y, vP.x);
-    float flow = 0.5 + 0.5 * sin(a * 3.0 - uTime * 1.2 + uSeed) * sin(a * 7.0 + uTime * 0.55 + uSeed * 2.0);
-    float spark = pow(max(sin(a * 19.0 - uTime * 2.2 + uSeed), 0.0), 16.0);
+    float flow = 0.5 + 0.5 * sin(a * 3.0 - uT * 1.2 + uSeed) * sin(a * 7.0 + uT * 0.55 + uSeed * 2.0);
+    float spark = pow(max(sin(a * 19.0 - uT * 2.2 + uSeed), 0.0), 16.0);
     float i = body * uGain * (0.6 + flow * 0.7 + spark * 0.7) * (1.0 + uFlash * 1.4) * uFade;
     gl_FragColor = vec4(uColor * i, 1.0);
   }`;
-const beamMat = (color, power, gain, seed) => new THREE.ShaderMaterial({
+const beamMat = (color, power, gain, seed, dir = 1) => new THREE.ShaderMaterial({
   uniforms: {
     uColor: { value: color }, uTime: { value: 0 }, uPower: { value: power }, uGain: { value: gain },
-    uFlash: { value: 0 }, uSeed: { value: seed }, uFade: { value: 1 },
+    uFlash: { value: 0 }, uSeed: { value: seed }, uFade: { value: 1 }, uDir: { value: dir },
   },
   vertexShader: beamVS, fragmentShader: beamFS,
   transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
@@ -346,12 +348,12 @@ RINGS.forEach((r, i) => {
     new THREE.TorusGeometry(R_RING, 0.03, 16, 480),
     new THREE.MeshBasicMaterial({ color: r.color.clone().lerp(new THREE.Color('#ffffff'), 0.35).multiplyScalar(2.0 * (r.glow || 1)), transparent: true })
   );
-  // fascio e alone
+  // fascio e alone: la luce del fascio corre in un verso, quella dell'alone nell'altro, come due braccia che si stringono
   const beam = new THREE.Mesh(new THREE.TorusGeometry(R_RING, 0.3, 48, 480), beamMat(r.color, 2.6, 0.85 * (r.glow || 1), i * 1.7));
-  const haze = new THREE.Mesh(new THREE.TorusGeometry(R_RING, 1.2, 32, 240), beamMat(r.color, 5.5, 0.2 * (r.glow || 1), i * 1.7 + 0.6));
-  // ghiera di metallo spazzolato, piatta come quella di un obiettivo
+  const haze = new THREE.Mesh(new THREE.TorusGeometry(R_RING, 1.2, 32, 240), beamMat(r.color, 5.5, 0.2 * (r.glow || 1), i * 1.7 + 0.6, -1));
+  // ghiera d'oro satinato, piatta come quella di un obiettivo: riflette solo luce calda, niente rosso
   const metalMat = new THREE.MeshPhysicalMaterial({
-    color: r.metal, metalness: 1, roughness: 0.3, anisotropy: 0.8, clearcoat: 0.25, envMapIntensity: 1.3, transparent: true,
+    color: '#e0bc7a', metalness: 1, roughness: 0.42, anisotropy: 0.6, envMap: GOLD_ENV, envMapIntensity: 1.1, transparent: true,
   });
   const band = new THREE.Mesh(new THREE.TorusGeometry(R_RING + 0.62, 0.06, 20, 480), metalMat);
   band.scale.z = 4.5;
@@ -381,7 +383,7 @@ RINGS.forEach((r, i) => {
     size: 0.045, map: DOT, color: r.color.clone().lerp(COL.crema, 0.55), transparent: true, opacity: 0.75,
     depthWrite: false, blending: THREE.AdditiveBlending,
   }));
-  g.add(band, ticks, haze, beam, core, grains);
+  g.add(band, haze, beam, core, grains); // senza tacche, come nella prova Abbraccio
   g.rotation.z = i * 0.7;
   scene.add(g);
   Object.assign(r, { group: g, core, beam, haze, ticks, grains, metalMat, flash: 0 });
@@ -846,7 +848,7 @@ function frame(time) {
     wobbleHot = lerp(wobbleHot, overBubble ? 1 : 0, 0.05);
     bubbleUniforms.uTime.value = t;
     bubbleUniforms.uPop.value = ease(popT);
-    bubbleUniforms.uWobble.value = 1 + wobbleHot * 1.6;
+    bubbleUniforms.uWobble.value = 1 + wobbleHot * 0.8;
     bubble.visible = popT < 0.999;
 
     // goccioline
