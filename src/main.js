@@ -5,6 +5,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 import Lenis from 'lenis';
 import { storia, daStoria } from './storia.js';
 import { creaMondi } from './mondi.js';
@@ -364,14 +365,59 @@ const corners = [];
 });
 hero.add(brackets);
 
-// la bolla di sapone: quasi invisibile, la forma che ondeggia appena, un filo bianco sul contorno
-const bubbleUniforms = { uTime: { value: 0 }, uWobble: { value: 1 }, uPop: { value: 0 } };
+// la bolla di sapone: quasi invisibile, la forma che ondeggia appena, un filo bianco sul contorno.
+// Dal 10/11 sera riflette la stanza di Locus fatta in Blender (blender/stanza.py, public/hdri/stanza-locus.hdr):
+// come una bolla vera, il riflesso è quasi invisibile al centro e forte sul bordo, sulla faccia davanti e, capovolto,
+// su quella dietro. Scelta nella pagina prove-bolle.html. Con ?riflesso=disegnato torna la bolla di prima.
+const RIFLESSO_DISEGNATO = new URLSearchParams(location.search).get('riflesso') === 'disegnato';
+const stanzaRT = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter });
+if (!RIFLESSO_DISEGNATO) {
+  const stanzaUni = { uMap: { value: null } };
+  const stanza = new THREE.Scene();
+  stanza.add(new THREE.Mesh(
+    new THREE.SphereGeometry(40, 64, 32),
+    new THREE.ShaderMaterial({
+      side: THREE.BackSide,
+      uniforms: stanzaUni,
+      vertexShader: `varying vec3 vW; void main(){ vW = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `uniform sampler2D uMap; varying vec3 vW;
+        void main(){
+          vec3 d = normalize(vW);
+          vec2 uv = vec2(atan(d.z, d.x) / 6.2831853 + 0.5, 0.5 - asin(clamp(d.y, -1.0, 1.0)) / 3.1415927);
+          // abbassata di un terzo e con le lampade frenate: più sapone che vetro rosso, niente bagliore sul bordo
+          gl_FragColor = vec4(min(texture2D(uMap, uv).rgb * 0.62, vec3(1.6)), 1.0);
+        }`,
+    })
+  ));
+  new HDRLoader().setDataType(THREE.FloatType).load(`${import.meta.env.BASE_URL}hdri/stanza-locus.hdr`, (tex) => {
+    tex.flipY = false;
+    tex.needsUpdate = true;
+    stanzaUni.uMap.value = tex;
+    new THREE.CubeCamera(0.1, 100, stanzaRT).update(renderer, stanza); // la stanza è ferma: basta fotografarla una volta
+    tex.dispose();
+  });
+}
+const bubbleUniforms = { uTime: { value: 0 }, uWobble: { value: 1 }, uPop: { value: 0 }, uEnv: { value: stanzaRT.texture } };
+const FS_RIFLESSO = /* glsl */ `
+      uniform float uPop; uniform samplerCube uEnv;
+      varying vec3 vN; varying vec3 vV; varying vec3 vP;
+      void main(){
+        vec3 N = normalize(vN); vec3 V = normalize(vV);
+        bool front = gl_FrontFacing;
+        if (!front) N = -N;                                    // dietro si vede il lato interno, che fa da specchio concavo
+        float ndv = clamp(dot(N, V), 0.0, 1.0);
+        float F = 0.03 + 0.97 * pow(1.0 - ndv, 5.0);           // come l'acqua: quasi niente al centro, tanto sul bordo
+        vec3 c = textureCube(uEnv, reflect(-V, N)).rgb * F * (front ? 1.0 : 0.55);
+        if (front) c += vec3(1.0) * smoothstep(0.82, 1.0, 1.0 - ndv) * 0.3;   // il filo bianco sul contorno
+        gl_FragColor = vec4(c * (1.0 - uPop), 1.0);
+      }`;
 const bubble = new THREE.Mesh(
   new THREE.SphereGeometry(2.9, 128, 128),
   new THREE.ShaderMaterial({
     uniforms: bubbleUniforms,
     transparent: true,
     depthWrite: false,
+    ...(RIFLESSO_DISEGNATO ? {} : { side: THREE.DoubleSide, blending: THREE.AdditiveBlending }),
     vertexShader: /* glsl */ `
       uniform float uTime, uWobble, uPop;
       varying vec3 vN; varying vec3 vV; varying vec3 vP;
@@ -397,7 +443,7 @@ const bubble = new THREE.Mesh(
         vV = normalize(cameraPosition - wp.xyz);
         gl_Position = projectionMatrix * viewMatrix * wp;
       }`,
-    fragmentShader: /* glsl */ `
+    fragmentShader: !RIFLESSO_DISEGNATO ? FS_RIFLESSO : /* glsl */ `
       uniform float uTime, uPop;
       varying vec3 vN; varying vec3 vV; varying vec3 vP;
       void main(){
