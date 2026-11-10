@@ -128,7 +128,7 @@ const sfocaPass = new ShaderPass({
       vec4 acc = vec4(0.0); float tot = 0.0;
       for (int i = 0; i < 14; i++) {
         float k = float(i) / 13.0, w = 1.0 - k * 0.6;
-        acc += texture2D(tDiffuse, 0.5 + d * (1.0 - uS * 0.075 * k)) * w;
+        acc += texture2D(tDiffuse, 0.5 + d * (1.0 - uS * 0.18 * k)) * w;
         tot += w;
       }
       gl_FragColor = acc / tot;
@@ -191,7 +191,7 @@ const hero = new THREE.Group();
 scene.add(hero);
 
 // L con le grazie, disegnata a mano finché non arriva il logo originale
-function makeL() {
+function makeL(seg = 12) {
   const s = new THREE.Shape();
   s.moveTo(-0.4, 0);
   s.lineTo(3.7, 0);
@@ -209,7 +209,7 @@ function makeL() {
   s.lineTo(-0.4, 0.26);
   s.lineTo(-0.4, 0);
   const geo = new THREE.ExtrudeGeometry(s, {
-    depth: 0.7, bevelEnabled: true, bevelThickness: 0.14, bevelSize: 0.085, bevelSegments: 12, curveSegments: 48,
+    depth: 0.7, bevelEnabled: true, bevelThickness: 0.14, bevelSize: 0.085, bevelSegments: seg, curveSegments: 48,
   });
   geo.center();
   geo.scale(0.5, 0.5, 0.5);
@@ -231,7 +231,27 @@ const lMat = new THREE.MeshPhysicalMaterial({
   iridescenceIOR: 1.4,
   envMapIntensity: 1.5,
 });
-const lMesh = new THREE.Mesh(makeL(), lMat);
+// dall'11/11 in prova: la L di carta, la stessa carta rossa dei cigni (cotta in Blender, blender/carta-texture.py).
+// Spigoli netti, come un cartoncino piegato; niente riflessi dello studio. Con ?l=smalto torna la L di smalto.
+const L_CARTA = new URLSearchParams(location.search).get('l') !== 'smalto';
+function cartaTex(nome, colore) {
+  const t = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}modelli/${nome}.jpg`);
+  if (colore) t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.MirroredRepeatWrapping; // il foglio si specchia ai bordi, così non si vedono giunte
+  t.repeat.set(0.22, 0.22);
+  t.anisotropy = 8;
+  return t;
+}
+const lCartaMat = L_CARTA ? (() => {
+  const map = cartaTex('carta-colore', true);
+  return new THREE.MeshPhysicalMaterial({
+    map, normalMap: cartaTex('carta-rilievo', false), normalScale: new THREE.Vector2(0.8, 0.8),
+    color: '#ffffff', roughness: 1, metalness: 0, envMapIntensity: 0.15, specularIntensity: 0.15,
+    sheen: 0.5, sheenRoughness: 0.9, sheenColor: new THREE.Color('#ff9c8c'),
+    emissive: '#ffffff', emissiveMap: map, emissiveIntensity: 0.08, flatShading: true,
+  });
+})() : null;
+const lMesh = new THREE.Mesh(L_CARTA ? makeL(1) : makeL(), L_CARTA ? lCartaMat : lMat);
 hero.add(lMesh);
 
 // controluce: un alone caldo dietro la L, che il vetro raccoglie e accende di rosso
@@ -1008,7 +1028,7 @@ function frame(time) {
   // passando un cerchio l'immagine si sfoca per un istante, come su Igloo, e torna nitida in un terzo di secondo
   sfocaPass.enabled = scossa > 0.003;
   sfocaPass.uniforms.uS.value = scossa;
-  scossa *= Math.exp(-dt * 9.0);
+  scossa *= Math.exp(-dt * 6.0); // dall'11/11 più forte e un filo più lunga
   // il mondo cambia appena attraversi un cerchio, e torna com'era se torni indietro
   if (PORTALE) mondi({ dt, t, cz, p, camera, bg, dustMat, ringLight });
   else bgAt(p);

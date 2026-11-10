@@ -296,7 +296,11 @@ export function creaMondi(scene, { ringZ, small }) {
   scene.add(PORCELLANA ? vaso : cigni);
 
   /* ------------------------------------------------------------------ */
-  const vis = (cz, a, b) => Math.min(seg(cz, a + 1, a - 3), 1 - seg(cz, b + 3, b - 1));
+  // dall'11/11 la comparsa è più lunga (6 unità invece di 4, con la curva morbida) e in più si addolcisce nel tempo:
+  // anche se lo scroll corre, ogni mondo entra in dissolvenza in poco più di un secondo, senza scatti
+  const vis = (cz, a, b) => Math.min(ease(seg(cz, a + 1, a - 5)), 1 - seg(cz, b + 3, b - 1));
+  const vMorb = [0, 0, 0];
+  const morbido = (i, target, dt) => (vMorb[i] += (target - vMorb[i]) * (1 - Math.exp(-dt * 2.4)));
 
   return function update({ dt, t, cz, p, camera, bg, dustMat, ringLight }) {
     // il mondo in cui sei: quanti cerchi hai attraversato
@@ -311,7 +315,7 @@ export function creaMondi(scene, { ringZ, small }) {
     sky.position.copy(camera.position);
 
     // fogli
-    const v1 = vis(cz, z1, z2);
+    const v1 = morbido(0, vis(cz, z1, z2), dt);
     fogli.visible = v1 > 0.002;
     cartaMats.forEach((mt) => opaco(mt, v1));
     if (fogli.visible) {
@@ -325,7 +329,7 @@ export function creaMondi(scene, { ringZ, small }) {
     }
 
     // fili: crescono davanti a te mentre avanzi
-    const v2 = vis(cz, z2, z3);
+    const v2 = morbido(1, vis(cz, z2, z3), dt);
     fili.visible = v2 > 0.002;
     filiMats.forEach((mt) => opaco(mt, v2));
     if (fili.visible) {
@@ -342,7 +346,7 @@ export function creaMondi(scene, { ringZ, small }) {
     }
 
     // dopo Costruisci, fino all'arrivo delle foto
-    const v3 = Math.min(seg(cz, z3 + 1, z3 - 3), 1 - seg(p, 0.44, 0.48));
+    const v3 = morbido(2, Math.min(ease(seg(cz, z3 + 1, z3 - 5)), 1 - seg(p, 0.44, 0.48)), dt);
     if (PORCELLANA) {
       vaso.visible = v3 > 0.002;
       opaco(porcMat, v3);
