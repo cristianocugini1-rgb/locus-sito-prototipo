@@ -4,8 +4,10 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import Lenis from 'lenis';
 import { storia, daStoria } from './storia.js';
+import { creaMondi } from './mondi.js';
 
 /* ------------------------------------------------------------------ */
 /* utilità                                                             */
@@ -81,6 +83,84 @@ const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.45, 0.45, 0.9);
 composer.addPass(bloom);
+
+// effetti al passaggio dentro i cerchi, in prova: ?effetto=velo, ?effetto=onda, ?effetto=no; senza niente, tutti e due
+// dal 10/11: senza niente, velo trasparente e portale; ?effetto=velo, ?effetto=portale, ?effetto=no.
+// ?effetto=riempi riporta lo smalto rosso che riempie il cerchio (bocciato)
+// velo e onda (prima prova, bocciata) restano raggiungibili con ?effetto=velo e ?effetto=onda
+const EFFETTO = new URLSearchParams(location.search).get('effetto') || 'tutti';
+const VELO = EFFETTO === 'velo' || EFFETTO === 'tutti';
+const ONDA = EFFETTO === 'onda';
+const RIEMPI = EFFETTO === 'riempi'; // la macchia rossa è stata bocciata il 10/11
+const PORTALE = EFFETTO === 'portale' || EFFETTO === 'tutti';
+// il rosso dello smalto liquido (valori lineari): uguale nel disco e nello schermo che si riapre
+const LIQUIDO = new THREE.Vector3(0.26, 0.006, 0.003);
+
+// onda nell'aria: lo schermo si increspa per un attimo, un anello che parte dal centro e si allarga
+const ondaPass = new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, uK: { value: 1 }, uAmp: { value: 0 }, uAspect: { value: innerWidth / innerHeight } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse; uniform float uK, uAmp, uAspect; varying vec2 vUv;
+    void main(){
+      vec2 q = vUv - 0.5; q.x *= uAspect;
+      float d = length(q);
+      float front = uK * 1.3;                                  // il fronte dell'onda si allarga
+      float x = d - front;
+      float w = sin(x * 38.0) * exp(-x * x * 60.0) * uAmp * (1.0 - uK);
+      vec2 dir = d > 0.0001 ? q / d : vec2(0.0);
+      dir.x /= uAspect;
+      gl_FragColor = texture2D(tDiffuse, vUv + dir * w);
+    }`,
+});
+ondaPass.enabled = false;
+composer.addPass(ondaPass);
+let ondaT = 1, ondaForza = 0;
+
+// sfocatura del passaggio: una sfocatura a raggiera dal centro, come uno scatto in avanti
+const sfocaPass = new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, uS: { value: 0 } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse; uniform float uS; varying vec2 vUv;
+    void main(){
+      vec2 d = vUv - 0.5;
+      vec4 acc = vec4(0.0); float tot = 0.0;
+      for (int i = 0; i < 14; i++) {
+        float k = float(i) / 13.0, w = 1.0 - k * 0.6;
+        acc += texture2D(tDiffuse, 0.5 + d * (1.0 - uS * 0.075 * k)) * w;
+        tot += w;
+      }
+      gl_FragColor = acc / tot;
+    }`,
+});
+sfocaPass.enabled = false;
+composer.addPass(sfocaPass);
+
+// riempi il vuoto: dopo il tuffo lo schermo è tutto smalto rosso, e si riapre dal centro con un bordo liquido
+const riapriPass = new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, uOpen: { value: 1 }, uTime: { value: 0 }, uAspect: { value: innerWidth / innerHeight }, uCol: { value: LIQUIDO.clone().multiplyScalar(1.15) } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse; uniform float uOpen, uTime, uAspect; uniform vec3 uCol; varying vec2 vUv;
+    void main(){
+      vec2 q = vUv - 0.5; q.x *= uAspect;
+      float d = length(q), an = atan(q.y, q.x);
+      float R = uOpen * 1.3 * (1.0 + 0.05 * sin(an * 5.0 + uTime * 1.3) + 0.03 * sin(an * 9.0 - uTime));
+      float red = smoothstep(R - 0.012, R + 0.012, d);
+      float rim = exp(-pow((d - R) * 38.0, 2.0)) * (1.0 - uOpen);
+      vec3 c = uCol + vec3(0.3, 0.04, 0.02) * rim;
+      gl_FragColor = vec4(mix(texture2D(tDiffuse, vUv).rgb, c, red), 1.0);
+    }`,
+});
+riapriPass.enabled = false;
+composer.addPass(riapriPass);
+let riapriT = 1;
+function riapri() { if (!RIEMPI) return; riapriT = 0; riapriPass.uniforms.uOpen.value = 0; riapriPass.enabled = true; }
+
+// il portale: i mondi dopo ogni cerchio (oggetti e cielo) stanno in mondi.js
+function onda(forza) { if (!ONDA) return; ondaT = 0; ondaForza = forza; ondaPass.enabled = true; }
+
 composer.addPass(new OutputPass());
 // antialiasing alla fine della catena: senza, i bordi escono a scalini.
 // (l'antialiasing multisample va in conflitto con il bagliore su alcune schede video e fa sparire la scena)
@@ -272,6 +352,7 @@ hero.add(drops);
 /* ------------------------------------------------------------------ */
 /* polvere di grani lungo tutto il volo: dà profondità                 */
 /* ------------------------------------------------------------------ */
+let dustMat;
 {
   const N = small ? 1500 : 3000;
   const g = new THREE.BufferGeometry();
@@ -280,9 +361,10 @@ hero.add(drops);
     p.set([(Math.random() - 0.5) * 26, (Math.random() - 0.5) * 16, 12 - Math.random() * 105], i * 3);
   }
   g.setAttribute('position', new THREE.BufferAttribute(p, 3));
-  scene.add(new THREE.Points(g, new THREE.PointsMaterial({
+  dustMat = new THREE.PointsMaterial({
     size: 0.05, map: DOT, color: '#f3c9a8', transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending,
-  })));
+  });
+  scene.add(new THREE.Points(g, dustMat));
 }
 
 /* ------------------------------------------------------------------ */
@@ -326,17 +408,38 @@ const beamMat = (color, power, gain, seed, dir = 1) => new THREE.ShaderMaterial(
   transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
 });
 const R_RING = 4.6;
+// il velo si rompe: goccioline che partono da tutta la pellicola, verso l'esterno e nel verso del passaggio
+function rompi(r, dir) {
+  if (!VELO || r.rotto) return;
+  r.rotto = true;
+  r.dropT = 0;
+  for (let k = 0; k < r.ND; k++) {
+    const a = Math.random() * Math.PI * 2, rad = R_RING * Math.sqrt(Math.random()) * 0.97;
+    const out = 0.8 + Math.random() * 2.6;
+    r.vdPos.set([Math.cos(a) * rad, Math.sin(a) * rad, -dir * Math.random() * 1.2], k * 3);
+    r.vdVel.set([Math.cos(a) * out, Math.sin(a) * out, -dir * (1 + Math.random() * 3)], k * 3);
+  }
+}
+const TUBI = !new URLSearchParams(location.search).has('luce');
+const LUCE_INTERNA = new THREE.Color('#ffc4a0');
+const LUCE_PURA = new URLSearchParams(location.search).get('interna') !== 'filo';
+// una luce calda che accompagna la camera: senza, i tubi lontani dalla L restano spenti
+const ringLight = new THREE.PointLight('#ffd2b0', TUBI ? 60 : 0, 40);
+scene.add(ringLight);
 RINGS.forEach((r, i) => {
   const g = new THREE.Group();
   g.position.z = r.z;
+  // dall'11/11, con i tubi, la luce dei vecchi cerchi (anima, fascio, alone) corre sul lato interno del tubo:
+  // è luce pura che si somma, non un colore dello smalto. Con ?interna=filo si torna al filamento del 10/11
+  const rL = TUBI && LUCE_PURA ? R_RING - 0.44 : R_RING;
   // anima incandescente
   const core = new THREE.Mesh(
-    new THREE.TorusGeometry(R_RING, 0.03, 16, 480),
+    new THREE.TorusGeometry(rL, 0.03, 16, 480),
     new THREE.MeshBasicMaterial({ color: r.color.clone().lerp(new THREE.Color('#ffffff'), 0.35).multiplyScalar(2.0 * (r.glow || 1)), transparent: true })
   );
   // fascio e alone: la luce del fascio corre in un verso, quella dell'alone nell'altro, come due braccia che si stringono
-  const beam = new THREE.Mesh(new THREE.TorusGeometry(R_RING, 0.3, 48, 480), beamMat(r.color, 2.6, 0.85 * (r.glow || 1), i * 1.7));
-  const haze = new THREE.Mesh(new THREE.TorusGeometry(R_RING, 1.2, 32, 240), beamMat(r.color, 5.5, 0.2 * (r.glow || 1), i * 1.7 + 0.6, -1));
+  const beam = new THREE.Mesh(new THREE.TorusGeometry(rL, 0.3, 48, 480), beamMat(r.color, 2.6, 0.85 * (r.glow || 1), i * 1.7));
+  const haze = new THREE.Mesh(new THREE.TorusGeometry(rL, 1.2, 32, 240), beamMat(r.color, 5.5, 0.2 * (r.glow || 1), i * 1.7 + 0.6, -1));
   // il bordo non è più un oggetto: è un secondo filo di luce sottile, con un alone morbido che scorre al contrario
   const metalMat = new THREE.MeshBasicMaterial({ color: r.color.clone().lerp(new THREE.Color('#ffffff'), 0.25).multiplyScalar(1.3 * (r.glow || 1)), transparent: true });
   const band = new THREE.Mesh(new THREE.TorusGeometry(R_RING + 0.62, 0.012, 12, 480), metalMat);
@@ -367,11 +470,99 @@ RINGS.forEach((r, i) => {
     size: 0.045, map: DOT, color: r.color.clone().lerp(COL.crema, 0.55), transparent: true, opacity: 0.75,
     depthWrite: false, blending: THREE.AdditiveBlending,
   }));
-  g.add(edgeBeam, band, haze, beam, core, grains); // senza tacche, come nella prova Abbraccio
+  // dal 10/11 i cerchi sono tubi a sezione tonda, nello stesso smalto rosso della L (con ?luce si torna ai cerchi di luce)
+  const tubeMat = lMat.clone();
+  tubeMat.transparent = true;
+  // un po' di luce sul lato interno del tubo, quello che guarda il centro del cerchio, come su Igloo
+  const uInner = { value: new THREE.Color() };
+  tubeMat.onBeforeCompile = (sh) => {
+    sh.uniforms.uInner = uInner;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vOP; varying vec3 vON;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n  vOP = position; vON = normal;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vOP; varying vec3 vON; uniform vec3 uInner;')
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        float dentro = clamp(-dot(normalize(vON.xy), normalize(vOP.xy)), 0.0, 1.0);
+        totalEmissiveRadiance += uInner * pow(dentro, 3.0);`);  // la luce del filamento sullo smalto vicino
+  };
+  tubeMat.customProgramCacheKey = () => 'tubo-luce-interna';
+  const tube = new THREE.Mesh(new THREE.TorusGeometry(R_RING, 0.43, 64, 360), tubeMat);
+  const innerGlow = new THREE.Mesh(new THREE.TorusGeometry(R_RING - 0.6, 0.45, 32, 240), beamMat(LUCE_INTERNA, 3.2, 0.13, i * 1.7 + 0.3));
+  // la sorgente: un filamento sottile incassato nel lato interno del tubo. È lui che fa luce (e un piccolo alone),
+  // mentre lo smalto attorno si schiarisce come illuminato da vicino
+  const filMat = new THREE.MeshBasicMaterial({ color: LUCE_INTERNA.clone(), transparent: true });
+  const filamento = new THREE.Mesh(new THREE.TorusGeometry(R_RING - 0.405, 0.016, 12, 480), filMat);
+  if (TUBI && LUCE_PURA) {
+    // la luce si stende nel piano del cerchio: il tubo le sta davanti e la copre, così sullo smalto non resta nessun velo rosa
+    haze.scale.z = beam.scale.z = 0.04;
+    // un po' più di luce (11/11): fascio e alone +40%, anima +30%
+    beam.material.uniforms.uGain.value *= 1.4;
+    haze.material.uniforms.uGain.value *= 1.4;
+    core.material.color.multiplyScalar(1.3);
+    g.add(tube, haze, beam, core, grains);
+  }
+  else if (TUBI) g.add(tube, filamento, innerGlow, grains);
+  else g.add(edgeBeam, band, haze, beam, core, grains); // senza tacche, come nella prova Abbraccio
+
+  // velo di bolla: una pellicola trasparente tesa nel cerchio, che si rompe in goccioline quando la attraversi
+  const veloUni = { uTime: { value: 0 }, uPop: { value: 0 }, uFade: { value: 0 } };
+  const velo = new THREE.Mesh(new THREE.CircleGeometry(R_RING, 128), new THREE.ShaderMaterial({
+    // la luce si somma e basta: dove il velo non riflette non c'è niente, nessuna patina grigia
+    uniforms: veloUni, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+    vertexShader: `uniform float uPop; varying vec2 vP; void main(){ vP = position.xy / ${R_RING.toFixed(2)}; gl_Position = projectionMatrix * modelViewMatrix * vec4(position * (1.0 + uPop * 0.12), 1.0); }`,
+    fragmentShader: /* glsl */ `
+      uniform float uTime, uPop, uFade; varying vec2 vP;
+      void main(){
+        float r = length(vP);
+        float a = atan(vP.y, vP.x);
+        // come la bolla: quasi invisibile al centro, un velo bianco verso il bordo, qualche riflesso che scorre piano
+        float edge = pow(r, 7.0) * 0.3;
+        float sheen = smoothstep(0.55, 1.0, 0.5 + 0.5 * sin(a * 2.0 + r * 5.0 + uTime * 0.25)) * smoothstep(0.3, 0.95, r) * 0.07;
+        vec2 wp = vP - vec2(-0.42, 0.48);                                    // il riflesso di finestra in alto a sinistra
+        float win = (1.0 - smoothstep(0.06, 0.09, abs(wp.x))) * (1.0 - smoothstep(0.035, 0.06, abs(wp.y))) * 0.22;
+        float luce = (edge * 0.55 + sheen * 0.8 + win) * (1.0 - uPop) * uFade * 0.6; // dall'11/11 più trasparente
+        gl_FragColor = vec4(vec3(1.0, 0.97, 0.94) * luce, 1.0);
+      }`,
+  }));
+  if (VELO) g.add(velo);
+  const ND = small ? 350 : 700;
+  const vdPos = new Float32Array(ND * 3), vdVel = new Float32Array(ND * 3);
+  const vdGeo = new THREE.BufferGeometry();
+  vdGeo.setAttribute('position', new THREE.BufferAttribute(vdPos, 3));
+  const vdMat = new THREE.PointsMaterial({ size: 0.06, map: DOT, color: '#ffffff', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+  const drops = new THREE.Points(vdGeo, vdMat);
+  drops.frustumCulled = false;
+  if (VELO) g.add(drops);
+
+  // riempi il vuoto: il centro del cerchio si riempie di smalto rosso liquido mentre ti avvicini
+  const discoUni = { uFill: { value: 0 }, uTime: { value: 0 }, uCol: { value: LIQUIDO } };
+  const disco = new THREE.Mesh(new THREE.CircleGeometry(R_RING, 160), new THREE.ShaderMaterial({
+    uniforms: discoUni, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    vertexShader: `varying vec2 vP; void main(){ vP = position.xy / ${R_RING.toFixed(2)}; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: /* glsl */ `
+      uniform float uFill, uTime; uniform vec3 uCol; varying vec2 vP;
+      void main(){
+        float r = length(vP), a = atan(vP.y, vP.x);
+        float R = uFill * 1.04 * (1.0 + 0.05 * sin(a * 5.0 + uTime * 1.3) + 0.03 * sin(a * 9.0 - uTime));
+        if (r > R + 0.012) discard;
+        float inside = 1.0 - smoothstep(R - 0.012, R + 0.012, r);
+        float rim = exp(-pow((r - R) * 30.0, 2.0));                       // il bordo del liquido, più chiaro
+        vec2 h = vP - vec2(-0.35, 0.4);
+        float hi = exp(-dot(h, h) * 16.0) * 0.14 * uFill;                  // un riflesso morbido in alto a sinistra
+        vec3 c = uCol * (0.85 + 0.3 * (1.0 - r)) + vec3(0.3, 0.04, 0.02) * rim + vec3(1.0, 0.8, 0.75) * hi;
+        gl_FragColor = vec4(c, inside);
+      }`,
+  }));
+  if (RIEMPI) g.add(disco);
+
   g.rotation.z = i * 0.7;
   scene.add(g);
-  Object.assign(r, { group: g, core, beam, haze, edgeBeam, ticks, grains, metalMat, flash: 0 });
+  Object.assign(r, { group: g, core, beam, haze, edgeBeam, ticks, grains, metalMat, tubeMat, flash: 0,
+    veloUni, vdPos, vdVel, vdGeo, vdMat, ND, rotto: false, popT: 1, dropT: 1, disco, discoUni, passato: false, uInner, innerGlow, filMat });
 });
+
+const mondi = PORTALE ? creaMondi(scene, { ringZ: RINGS.map((r) => r.z), small }) : null;
 
 /* ------------------------------------------------------------------ */
 /* 3. FOTO SOSPESE: galleggiano a profondità diverse e ci si vola in mezzo */
@@ -796,7 +987,7 @@ function adaptQuality(dt) {
   if (fps < 40 && pr > PR_MIN) { setPR(Math.max(PR_MIN, pr - 0.25)); qGood = 0; }
   else if (fps > 57 && pr < PR_MAX && ++qGood >= 3) { setPR(Math.min(PR_MAX, pr + 0.25)); qGood = 0; }
 }
-let prevCamZ = 9, vel = 0, hot = false;
+let prevCamZ = 9, vel = 0, hot = false, scossa = 0;
 
 function frame(time) {
   if (import.meta.env.DEV) { window.__frames = (window.__frames || 0) + 1; }
@@ -814,7 +1005,20 @@ function frame(time) {
   camera.position.set(mouseS.x * 0.45, mouseS.y * 0.3, cz);
   camera.lookAt(mouseS.x * 0.15, mouseS.y * 0.1, cz - 10);
   camera.rotateZ(Math.sin(flight * Math.PI * 2) * 0.09 * Math.sin(flight * Math.PI));
-  scene.fog.color.copy(bgAt(p));
+  // passando un cerchio l'immagine si sfoca per un istante, come su Igloo, e torna nitida in un terzo di secondo
+  sfocaPass.enabled = scossa > 0.003;
+  sfocaPass.uniforms.uS.value = scossa;
+  scossa *= Math.exp(-dt * 9.0);
+  // il mondo cambia appena attraversi un cerchio, e torna com'era se torni indietro
+  if (PORTALE) mondi({ dt, t, cz, p, camera, bg, dustMat, ringLight });
+  else bgAt(p);
+  scene.fog.color.copy(bg);
+  if (riapriPass.enabled) {
+    riapriT = Math.min(1, riapriT + dt / 1.2);
+    riapriPass.uniforms.uOpen.value = ease(riapriT);
+    riapriPass.uniforms.uTime.value = t;
+    if (riapriT >= 1) riapriPass.enabled = false;
+  }
   glowUni.uBg.value.copy(bg);
   glowUni.uTime.value = clock.elapsedTime;
 
@@ -865,22 +1069,60 @@ function frame(time) {
   let mood = 0.3;
   // all'apertura si vedono solo la L e la bolla: gli anelli si accendono mentre la L se ne va
   const appear = ease(seg(p, 0.11, 0.2));
+  if (ondaPass.enabled) {
+    ondaT = Math.min(1, ondaT + dt / 1.4);
+    ondaPass.uniforms.uK.value = ondaT;
+    ondaPass.uniforms.uAmp.value = 0.018 * ondaForza;
+    if (ondaT >= 1) ondaPass.enabled = false;
+  }
+  ringLight.position.set(3.5, 4, cz - 3);
+  ringLight.intensity = TUBI ? 60 * appear : 0; // spenta all'apertura, così la L resta illuminata come prima
   RINGS.forEach((r, i) => {
     r.group.visible = appear > 0.002;
     r.core.material.opacity = appear;
     r.metalMat.opacity = appear;
+    r.tubeMat.opacity = appear;
+    // la luce interna è quasi uguale nei tre cerchi (cresce appena) e resta sotto la soglia del bagliore
+    // con la luce pura lo smalto resta tutto rosso (l'11/11 Cristiano: niente parte rosa sul tubo)
+    r.uInner.value.copy(LUCE_INTERNA).multiplyScalar(LUCE_PURA ? 0 : (0.3 + 0.12 * (r.glow || 1)) * appear * (1 + r.flash * 0.5));
+    r.filMat.opacity = appear;
+    r.filMat.color.copy(LUCE_INTERNA).multiplyScalar((1.5 + 0.5 * (r.glow || 1)) * (1 + r.flash * 0.4));
     r.grains.material.opacity = 0.75 * appear;
     r.group.rotation.z += dt * (0.04 + i * 0.015);
     r.grains.rotation.z -= dt * 0.18;
     r.ticks.rotation.z -= dt * 0.05;
     const d = cz - r.z;
+    if (RIEMPI) {
+      // si riempie da 12 unità di distanza ed è pieno a 1,5; dopo il tuffo resta vuoto finché non torni lontano davanti
+      if (prevCamZ > r.z && cz <= r.z) { r.passato = true; riapri(); }
+      if (d > 12) r.passato = false;
+      r.discoUni.uFill.value = !r.passato && d > 0 ? ease(seg(d, 12, 1.5)) : 0;
+      r.discoUni.uTime.value = t;
+      r.disco.rotation.z = -r.group.rotation.z; // il riflesso resta in alto a sinistra mentre il cerchio gira
+    }
+    // velo: si rompe appena prima che la camera lo tocchi, in avanti o all'indietro; si riforma quando si torna davanti
+    if (prevCamZ > r.z + 0.6 && cz <= r.z + 0.6) rompi(r, 1);
+    if (prevCamZ < r.z - 0.6 && cz >= r.z - 0.6) rompi(r, -1);
+    if (prevCamZ > r.z && cz <= r.z) onda(1);
+    if (prevCamZ < r.z && cz >= r.z) onda(0.5);
+    if (r.rotto && cz > r.z + 4) r.rotto = false;
+    r.popT = clamp(r.popT + (r.rotto ? dt / 0.35 : -dt / 1.5));
+    r.veloUni.uTime.value = t;
+    r.veloUni.uPop.value = ease(r.popT);
+    r.veloUni.uFade.value = appear;
+    if (r.dropT < 1) {
+      r.dropT = Math.min(1, r.dropT + dt / 1.8);
+      for (let k = 0; k < r.ND * 3; k++) { r.vdPos[k] += r.vdVel[k] * dt; r.vdVel[k] *= 0.985; }
+      r.vdGeo.attributes.position.needsUpdate = true;
+      r.vdMat.opacity = (1 - r.dropT) * 0.9;
+    } else r.vdMat.opacity = 0;
     // passaggio dentro l'anello: lampo di luce e soffio
-    if (prevCamZ > r.z && cz <= r.z) { r.flash = 1; }
-    if (prevCamZ < r.z && cz >= r.z) r.flash = 0.5;
+    if (prevCamZ > r.z && cz <= r.z) { r.flash = 1; scossa = 1; }
+    if (prevCamZ < r.z && cz >= r.z) { r.flash = 0.5; scossa = 0.5; }
     r.flash *= 0.94;
     const fade = 1 - seg(Math.abs(d), 16, 44);
     const close = seg(Math.abs(d), 0.5, 7); // da vicino l'alone si ritira, sennò invade lo schermo
-    for (const m of [r.beam, r.haze, r.edgeBeam]) {
+    for (const m of [r.beam, r.haze, r.edgeBeam, r.innerGlow]) {
       const u = m.material.uniforms;
       u.uTime.value = t; u.uFlash.value = r.flash;
       u.uFade.value = appear * fade * (m === r.haze ? lerp(0.08, 1, close) : lerp(0.45, 1, close));
@@ -889,7 +1131,11 @@ function frame(time) {
     r.group.scale.setScalar(1 + near * 0.05 * Math.sin(t * 2 + i));
     r.group.rotation.x = mouseS.y * 0.14 * near;
     r.group.rotation.y = mouseS.x * 0.14 * near;
-    const vis = Math.min(seg(d, 14, 8), 1 - seg(d, 2, -1.5));
+    // con i mondi la parola arriva quando attraversi il suo cerchio e resta finché dura il suo mondo:
+    // Conosci con le pagine, Incontra con i fili, Costruisci con i cigni
+    const vis = PORTALE
+      ? Math.min(seg(-d, 0.3, 2.5), i < RINGS.length - 1 ? 1 - seg(-d, 15, 17.5) : 1 - seg(p, 0.44, 0.48))
+      : Math.min(seg(d, 14, 8), 1 - seg(d, 2, -1.5));
     showLayer(layers.r[i], vis);
     if (d < 16 && d > -2) mood = r.mood;
   });
@@ -1002,6 +1248,10 @@ function riprendi(y) {
 let saved = null;
 try { saved = sessionStorage.getItem('locus-home'); } catch (e) {}
 if (daStoria() && saved !== null) riprendi(Number(saved) || 0);
+if (import.meta.env.DEV && new URLSearchParams(location.search).has('vai')) {
+  const q = Number(new URLSearchParams(location.search).get('vai')) || 0;
+  setTimeout(() => riprendi(q * lenis.limit), 400);
+}
 // pagina ripresa dalla memoria del browser: tutto è com'era, basta togliere il velo e far ripartire lo scroll
 addEventListener('pageshow', (e) => {
   if (!e.persisted) return;
@@ -1016,4 +1266,6 @@ addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
   composer.setSize(innerWidth, innerHeight);
   bloom.resolution.set(innerWidth / 2, innerHeight / 2);
+  ondaPass.uniforms.uAspect.value = innerWidth / innerHeight;
+  riapriPass.uniforms.uAspect.value = innerWidth / innerHeight;
 });
