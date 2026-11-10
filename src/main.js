@@ -161,6 +161,72 @@ function riapri() { if (!RIEMPI) return; riapriT = 0; riapriPass.uniforms.uOpen.
 // il portale: i mondi dopo ogni cerchio (oggetti e cielo) stanno in mondi.js
 function onda(forza) { if (!ONDA) return; ondaT = 0; ondaForza = forza; ondaPass.enabled = true; }
 
+// la bolla del cursore (dall'11/11, idea presa da lusion.co): muovendo il mouse resta dietro una scia a forma di bolla.
+// Dentro l'immagine si piega come in una lente d'acqua, sul bordo un filo bianco; quando il cursore si ferma si ritira.
+// Senza colori, come la bolla della L. Solo con il mouse, non sul telefono; ?bolla=no la toglie.
+const BOLLA_CURSORE = !isTouch && new URLSearchParams(location.search).get('bolla') !== 'no';
+const NB = 18;
+const bollaPass = new ShaderPass({
+  uniforms: {
+    tDiffuse: { value: null }, uAsp: { value: innerWidth / innerHeight },
+    uP: { value: Array.from({ length: NB }, () => new THREE.Vector3()) },
+  },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse; uniform float uAsp; uniform vec3 uP[${NB}]; varying vec2 vUv;
+    void main(){
+      float f = 0.0; vec2 g = vec2(0.0);
+      for (int i = 0; i < ${NB}; i++) {
+        vec3 q = uP[i];
+        if (q.z <= 0.0) continue;
+        vec2 d = (vUv - q.xy) * vec2(uAsp, 1.0);
+        float dd = dot(d, d) + 1e-5;
+        float r2 = q.z * q.z;
+        f += r2 / dd;
+        g += -2.0 * r2 * d / (dd * dd);
+      }
+      vec2 n = length(g) > 0.0 ? normalize(g) : vec2(0.0);
+      float dentro = smoothstep(0.96, 1.04, f);
+      // la lente piega di più vicino al bordo, al centro quasi niente
+      float piega = dentro * (1.0 / max(f, 1.0)) * 0.022;
+      vec2 off = -n * piega; off.x /= uAsp;
+      vec4 c = texture2D(tDiffuse, vUv + off);
+      float filo = exp(-pow((f - 1.0) / 0.07, 2.0));
+      c.rgb += vec3(1.0, 0.97, 0.94) * (filo * 0.22 + dentro * 0.025);
+      gl_FragColor = c;
+    }`,
+});
+bollaPass.enabled = false;
+composer.addPass(bollaPass);
+const scia = []; // punti della scia: x, y (in pixel), nascita
+let sciaX = -1, sciaY = -1;
+const VITA_SCIA = Number(new URLSearchParams(location.search).get('scia')) || 0.75; // ?scia=4 la tiene 4 secondi, per le prove
+function aggiornaBolla(t) {
+  if (!BOLLA_CURSORE) return;
+  // un punto nuovo ogni pochi pixel di movimento: fermo il cursore, non nasce niente e la scia si ritira
+  const salto = Math.hypot(cur.tx - sciaX, cur.ty - sciaY);
+  if (pointerSeen && salto > 7) {
+    // se il mouse corre, i punti intermedi tengono la scia unita in una bolla sola
+    const passi = sciaX < 0 ? 1 : Math.min(6, Math.ceil(salto / 14));
+    for (let k = 1; k <= passi; k++) {
+      const a = k / passi;
+      scia.push({ x: sciaX < 0 ? cur.tx : lerp(sciaX, cur.tx, a), y: sciaY < 0 ? cur.ty : lerp(sciaY, cur.ty, a), t0: t });
+    }
+    sciaX = cur.tx; sciaY = cur.ty;
+    while (scia.length > NB) scia.shift();
+  }
+  while (scia.length && t - scia[0].t0 > VITA_SCIA) scia.shift();
+  const u = bollaPass.uniforms.uP.value;
+  for (let i = 0; i < NB; i++) {
+    const s = scia[i];
+    if (!s) { u[i].z = 0; continue; }
+    const vita = 1 - (t - s.t0) / VITA_SCIA;
+    u[i].set(s.x / innerWidth, 1 - s.y / innerHeight, 0.075 * Math.pow(Math.max(vita, 0), 0.8));
+  }
+  bollaPass.uniforms.uAsp.value = innerWidth / innerHeight;
+  bollaPass.enabled = scia.length > 0;
+}
+
 composer.addPass(new OutputPass());
 // antialiasing alla fine della catena: senza, i bordi escono a scalini.
 // (l'antialiasing multisample va in conflitto con il bagliore su alcune schede video e fa sparire la scena)
@@ -738,17 +804,87 @@ function battisteroPoints(N) {
   }
   return out;
 }
-const BN = small ? 9000 : 18000;
+// dall'11/11, sul modello della terza scena di Igloo: grani su tutte le superfici, come palline opache illuminate,
+// che arrivano da una nuvola a vortice e si compongono. ?battistero=luce torna ai grani di luce sugli spigoli.
+const BATT_SOLIDO = new URLSearchParams(location.search).get('battistero') !== 'luce';
+function battisteroSolido(N) {
+  const R = 2.4, y0 = -3.3, lv = [-3.3, -1.7, -0.7, 0.3, 1.3, 2.4];
+  const ang = (k) => k * Math.PI / 4 + Math.PI / 8;                 // angolo dei vertici dell'ottagono
+  const vtx = (k, r) => new THREE.Vector2(Math.cos(ang(k)) * r, Math.sin(ang(k)) * r);
+  const side = (k, t, r) => vtx(k, r).lerp(vtx(k + 1, r), t);
+  const nSide = (k) => new THREE.Vector3(Math.cos(ang(k) + Math.PI / 8), 0, Math.sin(ang(k) + Math.PI / 8));
+  const pos = new Float32Array(N * 3), nor = new Float32Array(N * 3);
+  // le parti, pesate più o meno per la loro superficie
+  const parti = [['base', 23], ['logge', 56], ['cornici', 16], ['pilastri', 10], ['tetto', 8], ['lanterna', 2], ['portali', 3]];
+  const tot = parti.reduce((s, [, w]) => s + w, 0);
+  const scegli = () => { let r = Math.random() * tot; for (const [n, w] of parti) { if ((r -= w) < 0) return n; } return 'base'; };
+  const portale = (k, t, y) => k % 2 === 0 && k < 6 && Math.abs(t - 0.5) < 0.16 && y < -2.05 + 0.22 * Math.sqrt(Math.max(0, 1 - ((t - 0.5) / 0.16) ** 2));
+  for (let i = 0; i < N; i++) {
+    const k = Math.floor(Math.random() * 8), t = Math.random();
+    let v, y, n = nSide(k);
+    const parte = scegli();
+    if (parte === 'base') {
+      y = lerp(y0, lv[1], Math.random());
+      if (portale(k, t, y)) { i--; continue; }
+      v = side(k, t, R);
+    } else if (parte === 'portali') {                                // il fondo scuro dei portali, rientrato
+      y = lerp(y0, -1.85, Math.random());
+      const tt = 0.5 + (Math.random() - 0.5) * 0.3;
+      if (!portale(k, tt, y)) { i--; continue; }
+      v = side(k, tt, R * 0.86);
+    } else if (parte === 'logge') {
+      const b = 1 + Math.floor(Math.random() * 4);
+      y = lerp(lv[b] + 0.08, lv[b + 1] - 0.06, Math.random());
+      if (Math.random() < 0.55) {
+        v = side(k, t, R * 0.88);                                      // il muro di fondo, rientrato dietro le colonnine
+      } else {                                                         // le colonnine, cinque per lato
+        const j = Math.floor(Math.random() * 5);
+        const c = side(k, (j + 0.5) / 5, R * 0.99), a = Math.random() * Math.PI * 2;
+        v = new THREE.Vector2(c.x + Math.cos(a) * 0.05, c.y + Math.sin(a) * 0.05);
+        n = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+      }
+    } else if (parte === 'cornici') {
+      const l = lv[Math.floor(Math.random() * lv.length)];
+      if (Math.random() < 0.6) { y = l + (Math.random() - 0.5) * 0.12; v = side(k, t, R * 1.06); }
+      else { y = l + 0.06; v = side(k, t, lerp(R * 0.97, R * 1.06, Math.random())); n = new THREE.Vector3(0, 1, 0); }
+    } else if (parte === 'pilastri') {
+      y = lerp(y0, 3.25, Math.random());
+      const c = vtx(k, R * 1.05), tg = new THREE.Vector2(-Math.sin(ang(k)), Math.cos(ang(k)));
+      v = c.addScaledVector(tg, (Math.random() - 0.5) * 0.22);
+      n = new THREE.Vector3(Math.cos(ang(k)), 0, Math.sin(ang(k)));
+    } else if (parte === 'tetto') {
+      const s = Math.random();
+      y = lerp(2.45, 3.0, s);
+      v = side(k, t, lerp(R * 1.02, 0.7, s));
+      n = nSide(k).multiplyScalar(0.5).add(new THREE.Vector3(0, 0.87, 0));
+    } else {
+      y = lerp(3.0, 3.45, Math.random());
+      v = side(k, t, 0.45);
+    }
+    pos.set([v.x, y, v.y], i * 3);
+    n.normalize();
+    nor.set([n.x, n.y, n.z], i * 3);
+  }
+  return { pos, nor };
+}
+const BN = BATT_SOLIDO ? (small ? 26000 : 60000) : (small ? 9000 : 18000);
 const bGeo = new THREE.BufferGeometry();
-const bTarget = battisteroPoints(BN);
+const bSolido = BATT_SOLIDO ? battisteroSolido(BN) : null;
+const bTarget = BATT_SOLIDO ? bSolido.pos : battisteroPoints(BN);
+if (BATT_SOLIDO) bGeo.setAttribute('aNormal', new THREE.BufferAttribute(bSolido.nor, 3));
 const bRand = new Float32Array(BN * 3);
 const bSeed = new Float32Array(BN);
 const bColor = new Float32Array(BN * 3);
+const MARMO = ['#e8c4b2', '#d9a594', '#f3dccd'].map((h) => new THREE.Color(h));
 for (let i = 0; i < BN; i++) {
-  const v = new THREE.Vector3().randomDirection().multiplyScalar(4 + Math.random() * 9);
+  // con il Battistero solido la nuvola è raccolta attorno all'edificio, come su Igloo
+  const v = new THREE.Vector3().randomDirection().multiplyScalar(BATT_SOLIDO ? 3 + Math.random() * 3.5 : 4 + Math.random() * 9);
   bRand.set([v.x, v.y, v.z], i * 3);
   bSeed[i] = Math.random();
-  const c = Math.random() < 0.8 ? COL.crema : COL.rossoVivo;
+  // con il Battistero solido: il marmo rosa di Verona, in tre toni; prima crema e qualche grano rosso
+  const c = BATT_SOLIDO
+    ? MARMO[Math.random() < 0.6 ? 0 : Math.random() < 0.75 ? 1 : 2]
+    : Math.random() < 0.8 ? COL.crema : COL.rossoVivo;
   bColor.set([c.r, c.g, c.b], i * 3);
 }
 bGeo.setAttribute('position', new THREE.BufferAttribute(bTarget, 3));
@@ -760,7 +896,56 @@ const bUni = {
   uMouse: { value: new THREE.Vector3(0, 0, 999) }, uPixel: { value: renderer.getPixelRatio() },
   uHeat: { value: COL.ambra }, uCenter: { value: new THREE.Vector3(0, 0, battZ) },
 };
-const batt = new THREE.Points(bGeo, new THREE.ShaderMaterial({
+// grani solidi: palline opache con luce e ombra, che arrivano girando a vortice
+const battSolidoMat = new THREE.ShaderMaterial({
+  uniforms: bUni,
+  transparent: true,
+  depthWrite: true,
+  vertexShader: /* glsl */ `
+    attribute vec3 aRandom; attribute float aSeed; attribute vec3 aColor; attribute vec3 aNormal;
+    uniform float uTime, uForm, uBurst, uPixel;
+    uniform vec3 uMouse, uCenter;
+    varying vec3 vColor; varying float vHeat; varying float vLuce;
+    void main(){
+      float f = smoothstep(0.0, 1.0, clamp(uForm * 1.5 - aSeed * 0.5, 0.0, 1.0));
+      // la nuvola gira attorno all'asse dell'edificio e rallenta mentre i grani si posano
+      float giro = (1.0 - f) * (3.0 + aSeed * 3.0) + uTime * 0.18 * (1.0 - f);
+      float cg = cos(giro), sg = sin(giro);
+      vec3 r = vec3(aRandom.x * cg - aRandom.z * sg, aRandom.y * (0.6 + 0.4 * f), aRandom.x * sg + aRandom.z * cg);
+      vec3 p = mix(r, position, f);
+      // anche posati, i grani tremolano appena
+      p += vec3(sin(uTime*0.9 + aSeed*40.0), cos(uTime*0.8 + aSeed*31.0), sin(uTime*0.7 + aSeed*17.0)) * (0.012 + (1.0-f)*0.2);
+      vec4 wp = modelMatrix * vec4(p, 1.0);
+      vec2 d = wp.xy - uMouse.xy;
+      float push = 1.0 - smoothstep(0.0, 0.85, length(d));
+      push *= push;
+      wp.xy += normalize(d + 1e-4) * push * 0.5;
+      wp.z  += push * 0.45;
+      wp.xyz += normalize(wp.xyz - uCenter + 1e-4) * uBurst * (1.0 + aSeed * 4.0);
+      vec4 mv = viewMatrix * wp;
+      gl_Position = projectionMatrix * mv;
+      gl_PointSize = (2.6 + aSeed * 1.6) * uPixel * (10.0 / -mv.z);
+      // luce da sinistra in alto, davanti: la parete in ombra resta scura, da nuvola la luce è uniforme
+      vec3 n = normalize(mat3(modelMatrix) * aNormal);
+      float l = 0.3 + 0.7 * max(dot(n, normalize(vec3(-0.55, 0.6, 0.6))), 0.0);
+      vLuce = mix(0.75, l, f);
+      vColor = aColor; vHeat = push;
+    }`,
+  fragmentShader: /* glsl */ `
+    uniform vec3 uHeat; uniform float uOpacity;
+    varying vec3 vColor; varying float vHeat; varying float vLuce;
+    void main(){
+      vec2 q = gl_PointCoord * 2.0 - 1.0;
+      float rr = dot(q, q);
+      if (rr > 1.0) discard;
+      // ogni grano è una pallina: chiara in alto a sinistra, scura sul bordo opposto
+      vec3 sn = vec3(q.x, -q.y, sqrt(1.0 - rr));
+      float tondo = 0.55 + 0.45 * max(dot(sn, normalize(vec3(-0.45, 0.55, 0.7))), 0.0);
+      vec3 c = mix(vColor, uHeat * 1.3, vHeat * 0.6) * vLuce * tondo * 1.2;
+      gl_FragColor = vec4(c, uOpacity);
+    }`,
+});
+const batt = new THREE.Points(bGeo, BATT_SOLIDO ? battSolidoMat : new THREE.ShaderMaterial({
   uniforms: bUni,
   transparent: true,
   depthWrite: false,
@@ -1232,7 +1417,7 @@ function frame(time) {
 
   /* apertura e chiusura */
   showLayer(layers.hero, gate.classList.contains('out') ? 1 - seg(p, 0.012, 0.05) : 0);
-  const endV = seg(p, 0.94, 0.985);
+  const endV = seg(p, 0.92, 0.96); // dall'11/11 un po' prima (era 0,94 a 0,985): "Chi siamo" arriva prima
   showLayer(layers.end, endV);
   goLinks.forEach((l) => { l.style.pointerEvents = endV > 0.6 ? 'auto' : 'none'; });
 
@@ -1248,6 +1433,7 @@ function frame(time) {
   const overLink = document.querySelector('a:hover, button:hover');
   cursor.classList.toggle('hot', hot || !!overLink);
 
+  aggiornaBolla(t);
   prevCamZ = cz;
   adaptQuality(dt);
   composer.render();
