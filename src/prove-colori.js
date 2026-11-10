@@ -9,12 +9,13 @@ import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 
 // tinta in gradi: oggi 34; più in basso va verso il rosa, mai verso il giallo
 const VARIANTI = [
-  { nome: 'Come oggi', hex: '#ffd9a8', nota: 'Il crema di adesso, per confronto.' },
-  { nome: '1. Crema rosata', hex: '#ffd0b0', nota: 'Lo stesso crema con un velo di rosa.' },
-  { nome: '2. Rosa tenue', hex: '#ffb8a8', nota: 'Un passo verso il rosso, ancora chiaro.' },
-  { nome: '3. Rossiccio', hex: '#ffa898', nota: 'Rosso chiaro e luminoso, ancora morbido.' },
-  { nome: '4. Rosso chiaro', hex: '#f59088', nota: 'Il più rosso: la luce del rosso Locus schiarito.' },
-  { nome: '5. Filo rosato, alone rosso', hex: '#ffd0b0', alone: '#ff7060', nota: 'Il filo resta chiaro, l’alone attorno è rosso.' },
+  // il bagliore dietro la L va da un rosso scuro (#4d0603) a un rosso brace (#f24d1a)
+  { nome: 'Come oggi', hex: '#ffa898', nota: 'Il rossiccio ora nel sito, per confronto.' },
+  { nome: '1. Brace', hex: '#f24d1a', nota: 'Tutto il cerchio del colore del bagliore dietro la L.' },
+  { nome: '2. Filo chiaro, alone brace', hex: '#ffc0a0', alone: '#f24d1a', nota: 'Come la L: luce chiara al centro, brace attorno.' },
+  { nome: '3. Filo rossiccio, alone brace', hex: '#ffa898', alone: '#f24d1a', nota: 'Il rossiccio di oggi dentro un alone di brace.' },
+  { nome: '4. Solo bagliore', hex: '#f24d1a', morbido: true, nota: 'Niente filo netto: un anello di luce morbida, come dietro la L.' },
+  { nome: '5. Brace scura', hex: '#d8381a', alone: '#a01808', nota: 'Più rossa e più cupa, verso il rosso Locus.' },
 ];
 
 const R = 4.6;
@@ -87,7 +88,12 @@ function anello(v, glow, i) {
   const grains = new THREE.Points(pg, new THREE.PointsMaterial({
     size: 0.045, map: DOT, color: col.clone().lerp(CREMA, 0.55), transparent: true, opacity: 0.75, depthWrite: false, blending: THREE.AdditiveBlending,
   }));
-  g.add(edge, band, haze, beam, core, grains);
+  if (v.morbido) {
+    // solo luce diffusa: fascio largo e morbido, alone più forte, niente fili netti
+    const soft = new THREE.Mesh(new THREE.TorusGeometry(R, 0.55, 48, 480), beamMat(col, 1.6, 0.55 * glow, i * 1.7));
+    const wide = new THREE.Mesh(new THREE.TorusGeometry(R, 1.5, 32, 240), beamMat(al, 3.5, 0.35 * glow, i * 1.7 + 0.6, -1));
+    g.add(wide, soft, grains);
+  } else g.add(edge, band, haze, beam, core, grains);
   g.userData.grains = grains;
   return g;
 }

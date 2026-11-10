@@ -424,6 +424,10 @@ figcaption { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1
 /* telefono                                                            */
 /* ================================================================== */
 @media (max-width: 860px) {
+  /* i format uno sotto l'altro: sul nastro laterale se ne vedeva uno solo */
+  .rail { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 44px 0 0; padding: 0; overflow: visible; scroll-snap-type: none; }
+  .rail .card { min-width: 0; }
+  .grain { opacity: .035; }
   .join-grid { grid-template-columns: 1fr; }
   .sh-dates li { grid-template-columns: 1fr; }
   .sh-dates time { grid-row: auto; }
@@ -432,14 +436,15 @@ figcaption { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1
   .nav { padding-top: calc(16px + env(safe-area-inset-top)); }
   .hero { padding-bottom: calc(10vh + env(safe-area-inset-bottom)); min-height: 100svh; }
   .scroll-hint { display: none; }
-  .block { padding: 13vh var(--pad) 8vh; }
+  .block { padding: 10vh var(--pad) 4vh; }
   .display { font-size: clamp(48px, 14vw, 72px); }
   .title { font-size: clamp(44px, 13vw, 64px); }
   .lead { font-size: 20px; }
   .stats, .triad { margin-top: 44px; }
   .triad h3 { font-size: 36px; }
   .wide .img { height: 46vh; }
-  .card { min-height: 400px; padding: 26px 22px; flex-basis: 82vw; }
+  .rail { grid-template-columns: 1fr; }
+  .card { min-height: 300px; padding: 26px 22px; }
   .card h3 { font-size: 34px; }
   .timeline li { padding-left: 24px; }
   .photos .img, .photos .img.tall { height: 38vh; }

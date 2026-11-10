@@ -32,13 +32,13 @@ const COL = {
 /* ------------------------------------------------------------------ */
 const canvas = document.getElementById('gl');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, small ? 1.5 : 2));
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.NeutralToneMapping;
 renderer.toneMappingExposure = 1.05;
 
 const scene = new THREE.Scene();
-const bg = new THREE.Color('#140404');
+const bg = new THREE.Color('#2b0d0c');
 scene.background = bg;
 scene.fog = new THREE.Fog(bg, 10, 44);
 
@@ -155,7 +155,7 @@ const lMesh = new THREE.Mesh(makeL(), lMat);
 hero.add(lMesh);
 
 // controluce: un alone caldo dietro la L, che il vetro raccoglie e accende di rosso
-const glowUni = { uBg: { value: new THREE.Color('#140404') }, uTime: { value: 0 }, uFade: { value: 1 } };
+const glowUni = { uBg: { value: new THREE.Color('#2b0d0c') }, uTime: { value: 0 }, uFade: { value: 1 } };
 const backGlow = new THREE.Mesh(
   new THREE.PlaneGeometry(9, 9),
   new THREE.ShaderMaterial({
@@ -755,8 +755,8 @@ function cameraZ(p) {
   return lerp(-64, -63, ease(seg(p, 0.92, 1)));
 }
 const BG_KEYS = [
-  [0, '#140404'], [0.12, '#1d0707'], [0.26, '#2b0d0c'], [0.38, '#2a1105'], [0.48, '#15100c'],
-  [0.6, '#120807'], [0.74, '#160606'], [0.9, '#0c0404'], [1, '#050202'],
+  // dal 10/11 lo stesso rosso scuro lungo tutto il percorso (prima quasi nero, con il rosso solo nel tratto dei cerchi)
+  [0, '#2b0d0c'], [1, '#2b0d0c'],
 ].map(([k, c]) => [k, new THREE.Color(c)]);
 function bgAt(p) {
   for (let i = 0; i < BG_KEYS.length - 1; i++) {
@@ -777,6 +777,7 @@ const clock = new THREE.Clock();
 
 // qualità adattiva: se il computer fatica, si abbassa la risoluzione; se c'è margine, si rialza
 const PR_MAX = renderer.getPixelRatio();
+const PR_MIN = Math.min(PR_MAX, 1.25); // sotto, sui telefoni l'immagine si sgrana
 let pr = PR_MAX, qAcc = 0, qFrames = 0, qGood = 0;
 function setPR(v) {
   pr = v;
@@ -792,7 +793,7 @@ function adaptQuality(dt) {
   if (qAcc < 1) return;
   const fps = qFrames / qAcc;
   qAcc = 0; qFrames = 0;
-  if (fps < 45 && pr > 0.75) { setPR(Math.max(0.75, pr - 0.25)); qGood = 0; }
+  if (fps < 40 && pr > PR_MIN) { setPR(Math.max(PR_MIN, pr - 0.25)); qGood = 0; }
   else if (fps > 57 && pr < PR_MAX && ++qGood >= 3) { setPR(Math.min(PR_MAX, pr + 0.25)); qGood = 0; }
 }
 let prevCamZ = 9, vel = 0, hot = false;

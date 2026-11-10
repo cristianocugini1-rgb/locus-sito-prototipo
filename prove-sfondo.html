@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Locus · prove di sfondo</title>
+  <!-- Pagina di prova, non fa parte del sito: si apre anche con un doppio clic. -->
+  <style>
+    body { margin: 0; background: #111; color: #F5E4CB; font-family: Inter, system-ui, sans-serif; }
+    h1 { font-weight: 600; font-size: 15px; letter-spacing: .15em; text-transform: uppercase; margin: 0; padding: 22px 28px 6px; }
+    p.intro { margin: 0; padding: 0 28px 20px; font-size: 14px; opacity: .7; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; padding: 0 10px 10px; }
+    .s { position: relative; height: 340px; display: flex; flex-direction: column; justify-content: flex-end; padding: 22px; box-sizing: border-box; overflow: hidden; }
+    .s .ring { position: absolute; top: 40px; left: 50%; width: 150px; height: 150px; margin-left: -75px; border-radius: 50%;
+      border: 2px solid #ffd0c0; box-shadow: 0 0 10px 3px rgba(255, 168, 152, .8), inset 0 0 10px 3px rgba(255, 168, 152, .8), 0 0 40px 10px rgba(255, 168, 152, .25); }
+    .s b { font: 400 34px/1 'Anton', Impact, sans-serif; text-transform: uppercase; }
+    .s span { display: block; margin-top: 8px; font-size: 13px; letter-spacing: .06em; }
+    .s i { display: block; margin-top: 3px; font-size: 12px; font-style: normal; opacity: .7; }
+    .s.top { outline: 2px solid #F5E4CB; outline-offset: -2px; }
+  </style>
+</head>
+<body>
+  <h1>Il rosso Locus e gli sfondi</h1>
+  <p class="intro">In alto il rosso del marchio e lo sfondo di oggi. Sotto, sfondi sempre più rossi: ognuno con il titolo e un cerchio di luce sopra.</p>
+  <div class="grid">
+    <div class="s top" style="background:#800200"><b>Riempi il vuoto.</b><span>#800200</span><i>Il rosso Locus, pieno</i></div>
+    <div class="s" style="background:#140404"><div class="ring"></div><b>Riempi il vuoto.</b><span>#140404</span><i>Oggi: lo sfondo all'apertura</i></div>
+    <div class="s" style="background:#2b0d0c"><div class="ring"></div><b>Riempi il vuoto.</b><span>#2b0d0c</span><i>Oggi: lo sfondo nel tratto dei cerchi</i></div>
+    <div class="s" style="background:#330504"><div class="ring"></div><b>Riempi il vuoto.</b><span>#330504</span><i>1. Rosso scurissimo</i></div>
+    <div class="s" style="background:#420605"><div class="ring"></div><b>Riempi il vuoto.</b><span>#420605</span><i>2. Rosso vino</i></div>
+    <div class="s" style="background:#520705"><div class="ring"></div><b>Riempi il vuoto.</b><span>#520705</span><i>3. Rosso profondo</i></div>
+    <div class="s" style="background:#650804"><div class="ring"></div><b>Riempi il vuoto.</b><span>#650804</span><i>4. Rosso Locus in ombra</i></div>
+    <div class="s" style="background:radial-gradient(ellipse at 50% 35%, #800200 0%, #4a0604 55%, #210302 100%)"><div class="ring"></div><b>Riempi il vuoto.</b><span>#800200 al centro, #210302 ai bordi</span><i>5. Rosso Locus che sfuma nel buio</i></div>
+    <div class="s" style="background:radial-gradient(ellipse at 50% 35%, #5a0805 0%, #2e0504 60%, #160303 100%)"><div class="ring"></div><b>Riempi il vuoto.</b><span>#5a0805 al centro, #160303 ai bordi</span><i>6. Come la 5, più trattenuta</i></div>
+  </div>
+</body>
+</html>

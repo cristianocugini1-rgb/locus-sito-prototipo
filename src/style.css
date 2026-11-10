@@ -2,7 +2,7 @@
   --rosso: #800200;
   --crema: #F5E4CB;
   --lime: #ECFE02;
-  --nero: #140404;
+  --nero: #2b0d0c;
 }
 
 html, body {
@@ -203,3 +203,6 @@ html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent
   .go { text-align: center; }
   .mirino b { font-size: 36px; }
 }
+
+/* sul telefono la grana si vede di più: la metà */
+@media (max-width: 700px) { .grain { opacity: .035; } }
