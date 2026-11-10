@@ -232,8 +232,9 @@ const lMat = new THREE.MeshPhysicalMaterial({
   envMapIntensity: 1.5,
 });
 // dall'11/11 in prova: la L di carta, la stessa carta rossa dei cigni (cotta in Blender, blender/carta-texture.py).
-// Spigoli netti, come un cartoncino piegato; niente riflessi dello studio. Con ?l=smalto torna la L di smalto.
-const L_CARTA = new URLSearchParams(location.search).get('l') !== 'smalto';
+// Spigoli netti, come un cartoncino piegato; niente riflessi dello studio.
+// Il 10/11 Cristiano ha preferito lo smalto: la carta resta solo per confronto, con ?l=carta.
+const L_CARTA = new URLSearchParams(location.search).get('l') === 'carta';
 function cartaTex(nome, colore) {
   const t = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}modelli/${nome}.jpg`);
   if (colore) t.colorSpace = THREE.SRGBColorSpace;

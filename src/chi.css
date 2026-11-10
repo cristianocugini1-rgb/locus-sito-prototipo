@@ -32,7 +32,16 @@ main, .foot { position: relative; z-index: 2; }
   padding: 20px var(--pad);
   transition: background .6s, backdrop-filter .6s, padding .6s;
 }
-.nav.solid { background: rgba(20, 4, 4, .72); backdrop-filter: blur(14px); padding-top: 14px; padding-bottom: 14px; }
+/* lo sfondo sfocato della barra sta in un livello a parte: messo sulla barra stessa, chiudeva il menù a tendina
+   del telefono dentro l'altezza della barra, e la tendina perdeva lo sfondo appena si scorreva */
+.nav::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: rgba(20, 4, 4, .72); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  opacity: 0; transition: opacity .6s;
+}
+.nav.solid::before { opacity: 1; }
+.nav.solid { padding-top: 14px; padding-bottom: 14px; }
+html.menu-open, body.menu-open { overflow: hidden; overscroll-behavior: none; }
 .logo { margin-right: auto; display: block; height: 34px; }
 .logo img { height: 100%; width: auto; mix-blend-mode: screen; object-fit: contain; }
 #menu { display: flex; gap: 26px; }
@@ -70,7 +79,9 @@ main, .foot { position: relative; z-index: 2; }
     padding: 0 var(--pad); gap: 18px; background: rgba(20, 4, 4, .96);
     clip-path: circle(0 at calc(100% - 40px) 34px); transition: clip-path .9s var(--ease);
   }
-  #menu a { font-family: 'Anton', sans-serif; font-size: 44px; letter-spacing: 0; opacity: 1; }
+  /* le voci si adattano all'altezza dello schermo, così stanno tutte anche sui telefoni bassi */
+  #menu { justify-content: safe center; overflow-y: auto; gap: clamp(6px, 2vh, 18px); padding-top: 70px; padding-bottom: 30px; }
+  #menu a { font-family: 'Anton', sans-serif; font-size: clamp(28px, 6.2vh, 44px); letter-spacing: 0; opacity: 1; }
   .menu-open #menu { clip-path: circle(150% at calc(100% - 40px) 34px); }
 }
 

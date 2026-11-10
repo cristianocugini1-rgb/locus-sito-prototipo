@@ -21,14 +21,20 @@ $$('#menu a, .scroll-hint').forEach((a) => {
     const id = a.getAttribute('href');
     if (!id.startsWith('#')) return;
     e.preventDefault();
-    document.body.classList.remove('menu-open');
+    menu(false);
     // ogni sezione raggiunta dal menu è un passo della cronologia
     history.replaceState({ ...(history.state || {}), y: scrollY }, '');
     history.pushState({ sec: id }, '', id);
     lenis.scrollTo(id, { duration: 1.8, offset: -40, easing: (t) => 1 - Math.pow(1 - t, 4) });
   });
 });
-$('#burger').addEventListener('click', () => document.body.classList.toggle('menu-open'));
+// a menù aperto la pagina sotto resta ferma (sul telefono prima continuava a scorrere sotto la tendina)
+function menu(aperto) {
+  document.body.classList.toggle('menu-open', aperto);
+  document.documentElement.classList.toggle('menu-open', aperto);
+  if (aperto) lenis.stop(); else lenis.start();
+}
+$('#burger').addEventListener('click', () => menu(!document.body.classList.contains('menu-open')));
 
 // voce di menu attiva
 const sections = $$('main section[id]');
