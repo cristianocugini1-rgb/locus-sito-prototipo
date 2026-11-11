@@ -162,70 +162,107 @@ function riapri() { if (!RIEMPI) return; riapriT = 0; riapriPass.uniforms.uOpen.
 // il portale: i mondi dopo ogni cerchio (oggetti e cielo) stanno in mondi.js
 function onda(forza) { if (!ONDA) return; ondaT = 0; ondaForza = forza; ondaPass.enabled = true; }
 
-// la bolla del cursore (dall'11/11, idea presa da lusion.co): muovendo il mouse resta dietro una scia a forma di bolla.
-// Dentro l'immagine si piega come in una lente d'acqua, sul bordo un filo bianco; quando il cursore si ferma si ritira.
-// Senza colori, come la bolla della L. Solo con il mouse, non sul telefono; ?bolla=no la toglie.
-const BOLLA_CURSORE = !isTouch && new URLSearchParams(location.search).get('bolla') !== 'no';
-const NB = 18;
+// la bolla del cursore (idea presa da lusion.co): muovendo il mouse resta dietro una scia a forma di bolla.
+// Dal 10/11 sera è una cometa: una bolla piccola in testa e una coda lunga che si assottiglia (prima i cerchi si
+// sommavano e la scia lunga diventava grossa). È una catena di capsule, ognuna col suo raggio, quindi resta sottile.
+// Dentro l'immagine si piega come in una lente d'acqua, sul bordo riflette la stanza di Locus come la bolla della L,
+// più un filo bianco. Quando il cursore si ferma la coda si ritira. Solo con il mouse, non sul telefono; ?bolla=no la toglie.
+// la stanza di Locus fotografata su un cubo: la riflettono la bolla della L e la bolla del cursore (si riempie più sotto)
+const stanzaRT = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter });
+// dall'11/11 tolta dal sito su richiesta di Cristiano: il mouse resta libero. Con ?bolla=si torna la cometa, per le prove.
+const BOLLA_CURSORE = !isTouch && new URLSearchParams(location.search).get('bolla') === 'si';
+const NB = 48;                 // punti della scia
+const R_TESTA = 0.024;         // raggio della bolla in testa, in parti dell'altezza dello schermo
+const R_CODA = 0.009;          // raggio della coda dove si attacca alla testa
+const PASSO = 14;              // pixel tra un punto e l'altro: le capsule riempiono lo spazio in mezzo
 const bollaPass = new ShaderPass({
   uniforms: {
-    tDiffuse: { value: null }, uAsp: { value: innerWidth / innerHeight },
+    tDiffuse: { value: null }, uAsp: { value: innerWidth / innerHeight }, uN: { value: 0 },
+    uEnv: { value: stanzaRT.texture },
     uP: { value: Array.from({ length: NB }, () => new THREE.Vector3()) },
   },
   vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */ `
-    uniform sampler2D tDiffuse; uniform float uAsp; uniform vec3 uP[${NB}]; varying vec2 vUv;
+    uniform sampler2D tDiffuse; uniform samplerCube uEnv; uniform float uAsp; uniform int uN; uniform vec3 uP[${NB}];
+    varying vec2 vUv;
     void main(){
-      float f = 0.0; vec2 g = vec2(0.0);
+      vec2 p = vUv * vec2(uAsp, 1.0);
+      float best = 1e9; vec2 bn = vec2(0.0); float br = 1.0;
+      // la coda: capsule tra i punti, dal più vecchio al penultimo; l'ultimo punto è la testa, una bolla tonda a sé
       for (int i = 0; i < ${NB}; i++) {
-        vec3 q = uP[i];
-        if (q.z <= 0.0) continue;
-        vec2 d = (vUv - q.xy) * vec2(uAsp, 1.0);
-        float dd = dot(d, d) + 1e-5;
-        float r2 = q.z * q.z;
-        f += r2 / dd;
-        g += -2.0 * r2 * d / (dd * dd);
+        if (i >= uN) break;
+        vec3 a = uP[i];
+        vec3 b = (i + 2 < uN) ? uP[i + 1] : a;
+        vec2 pa = p - a.xy * vec2(uAsp, 1.0);
+        vec2 ba = (b.xy - a.xy) * vec2(uAsp, 1.0);
+        float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-9), 0.0, 1.0);
+        vec2 q = pa - ba * h;
+        float r = max(mix(a.z, b.z, h), 1e-5);
+        float dist = length(q);
+        float sd = dist / r;                       // meno di 1: siamo dentro la bolla
+        if (sd < best) { best = sd; bn = q / max(dist, 1e-6); br = r; }
       }
-      vec2 n = length(g) > 0.0 ? normalize(g) : vec2(0.0);
-      float dentro = smoothstep(0.96, 1.04, f);
-      // la lente piega di più vicino al bordo, al centro quasi niente
-      float piega = dentro * (1.0 / max(f, 1.0)) * 0.022;
-      vec2 off = -n * piega; off.x /= uAsp;
-      vec4 c = texture2D(tDiffuse, vUv + off);
-      float filo = exp(-pow((f - 1.0) / 0.07, 2.0));
-      c.rgb += vec3(1.0, 0.97, 0.94) * (filo * 0.22 + dentro * 0.025);
+      vec4 c = texture2D(tDiffuse, vUv);
+      if (best < 1.05) {
+        float s = min(best, 1.0);
+        vec3 N = vec3(bn * s, sqrt(max(1.0 - s * s, 0.0)));   // come una sfera o un tubo visto di fronte
+        float F = 0.03 + 0.97 * pow(1.0 - N.z, 5.0);          // riflesso quasi niente al centro, forte sul bordo
+        vec2 off = -bn * pow(s, 3.0) * br * 0.45; off.x /= uAsp; // la lente piega di più vicino al bordo
+        vec4 dentro = texture2D(tDiffuse, vUv + off);
+        dentro.rgb += min(textureCube(uEnv, reflect(vec3(0.0, 0.0, -1.0), N)).rgb * 0.62, vec3(1.6)) * F;
+        float m = 1.0 - smoothstep(0.96, 1.02, best);
+        c = mix(c, dentro, m);
+      }
+      float filo = exp(-pow((best - 1.0) / 0.07, 2.0));
+      c.rgb += vec3(1.0, 0.97, 0.94) * filo * 0.2;
       gl_FragColor = c;
     }`,
 });
 bollaPass.enabled = false;
 composer.addPass(bollaPass);
-const scia = []; // punti della scia: x, y (in pixel), nascita
+const scia = []; // punti della scia, dal più vecchio al più nuovo: x, y (in pixel), nascita
 let sciaX = -1, sciaY = -1;
-const VITA_SCIA = Number(new URLSearchParams(location.search).get('scia')) || 0.75; // ?scia=4 la tiene 4 secondi, per le prove
+const VITA_SCIA = Number(new URLSearchParams(location.search).get('scia')) || 1.4; // ?scia=4 la tiene 4 secondi, per le prove
+let sciaT = 0;
+// solo in locale: disegna una scia ferma lungo una curva, per guardarne la forma anche dove la pagina gira lenta
+if (import.meta.env.DEV) window.__sciaProva = (x0 = innerWidth * 0.7, y0 = innerHeight * 0.15) => {
+  scia.length = 0;
+  for (let i = 0; i < NB - 1; i++) {
+    const a = i / (NB - 2);
+    scia.push({ x: x0 + Math.sin(a * 3.0) * innerHeight * 0.25, y: y0 + a * innerHeight * 0.65, t0: sciaT - (1 - a) * VITA_SCIA * 0.97 });
+  }
+  const l = scia[scia.length - 1];
+  cur.tx = l.x; cur.ty = l.y; sciaX = l.x; sciaY = l.y; pointerSeen = true;
+};
 function aggiornaBolla(t) {
+  sciaT = t;
   if (!BOLLA_CURSORE) return;
-  // un punto nuovo ogni pochi pixel di movimento: fermo il cursore, non nasce niente e la scia si ritira
+  // un punto nuovo ogni pochi pixel di movimento: fermo il cursore, non nasce niente e la coda si ritira
   const salto = Math.hypot(cur.tx - sciaX, cur.ty - sciaY);
-  if (pointerSeen && salto > 7) {
-    // se il mouse corre, i punti intermedi tengono la scia unita in una bolla sola
-    const passi = sciaX < 0 ? 1 : Math.min(6, Math.ceil(salto / 14));
+  if (pointerSeen && (sciaX < 0 || salto > PASSO)) {
+    const passi = sciaX < 0 ? 1 : Math.min(8, Math.floor(salto / PASSO));
     for (let k = 1; k <= passi; k++) {
       const a = k / passi;
       scia.push({ x: sciaX < 0 ? cur.tx : lerp(sciaX, cur.tx, a), y: sciaY < 0 ? cur.ty : lerp(sciaY, cur.ty, a), t0: t });
     }
     sciaX = cur.tx; sciaY = cur.ty;
-    while (scia.length > NB) scia.shift();
+    while (scia.length > NB - 1) scia.shift();
   }
   while (scia.length && t - scia[0].t0 > VITA_SCIA) scia.shift();
   const u = bollaPass.uniforms.uP.value;
+  // la testa segue il cursore esatto, così la bolla non resta indietro di un passo
+  const pts = scia.length ? [...scia, { x: cur.tx, y: cur.ty, t0: scia[scia.length - 1].t0 }] : [];
   for (let i = 0; i < NB; i++) {
-    const s = scia[i];
+    const s = pts[i];
     if (!s) { u[i].z = 0; continue; }
-    const vita = 1 - (t - s.t0) / VITA_SCIA;
-    u[i].set(s.x / innerWidth, 1 - s.y / innerHeight, 0.075 * Math.pow(Math.max(vita, 0), 0.8));
+    const vita = Math.max(1 - (t - s.t0) / VITA_SCIA, 0);
+    const testa = i === pts.length - 1;
+    // la testa è la bolla piccola; la coda parte sottile e si assottiglia fino a sparire
+    u[i].set(s.x / innerWidth, 1 - s.y / innerHeight, testa ? R_TESTA * Math.pow(vita, 0.5) : R_CODA * Math.pow(vita, 1.1));
   }
+  bollaPass.uniforms.uN.value = pts.length;
   bollaPass.uniforms.uAsp.value = innerWidth / innerHeight;
-  bollaPass.enabled = scia.length > 0;
+  bollaPass.enabled = pts.length > 0;
 }
 
 composer.addPass(new OutputPass());
@@ -370,7 +407,6 @@ hero.add(brackets);
 // come una bolla vera, il riflesso è quasi invisibile al centro e forte sul bordo, sulla faccia davanti e, capovolto,
 // su quella dietro. Scelta nella pagina prove-bolle.html. Con ?riflesso=disegnato torna la bolla di prima.
 const RIFLESSO_DISEGNATO = new URLSearchParams(location.search).get('riflesso') === 'disegnato';
-const stanzaRT = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter });
 if (!RIFLESSO_DISEGNATO) {
   const stanzaUni = { uMap: { value: null } };
   const stanza = new THREE.Scene();
