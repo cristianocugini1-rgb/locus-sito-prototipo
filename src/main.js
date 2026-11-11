@@ -961,7 +961,9 @@ function battisteroSolido(N) {
   }
   return { pos, nor };
 }
-const BN = BATT_SOLIDO ? (LEGGERO ? 14000 : small ? 26000 : 60000) : (smallQ ? 9000 : 18000);
+// stelle del Battistero di luce: dall'11/11 sera il doppio (prima 18.000), ?stelle=50000 per provare altri numeri
+const STELLE = Number(Q.get('stelle')) || (LEGGERO ? 12000 : small ? 20000 : 36000);
+const BN = BATT_SOLIDO ? (LEGGERO ? 14000 : small ? 26000 : 60000) : STELLE;
 const bGeo = new THREE.BufferGeometry();
 const bSolido = BATT_SOLIDO ? battisteroSolido(BN) : null;
 const bTarget = BATT_SOLIDO ? bSolido.pos : battisteroPoints(BN);
@@ -989,6 +991,8 @@ const bUni = {
   uTime: { value: 0 }, uForm: { value: 0 }, uBurst: { value: 0 }, uOpacity: { value: 0 },
   uMouse: { value: new THREE.Vector3(0, 0, 999) }, uPixel: { value: renderer.getPixelRatio() },
   uHeat: { value: COL.ambra }, uCenter: { value: new THREE.Vector3(0, 0, battZ) },
+  // con più stelle ognuna brilla un po' meno, così l'insieme non diventa una macchia bianca
+  uLuce: { value: Math.min(1, Math.sqrt(18000 / BN) * 1.15) },
 };
 // grani solidi: palline opache con luce e ombra, che arrivano girando a vortice
 const battSolidoMat = new THREE.ShaderMaterial({
@@ -1067,13 +1071,13 @@ const batt = new THREE.Points(bGeo, BATT_SOLIDO ? battSolidoMat : new THREE.Shad
       vColor = aColor; vHeat = push; vA = 0.45 + aSeed * 0.55;
     }`,
   fragmentShader: /* glsl */ `
-    uniform vec3 uHeat; uniform float uOpacity;
+    uniform vec3 uHeat; uniform float uOpacity, uLuce;
     varying vec3 vColor; varying float vHeat; varying float vA;
     void main(){
       float r = length(gl_PointCoord - 0.5);
       float a = smoothstep(0.5, 0.0, r);
       vec3 c = mix(vColor, uHeat * 1.6, vHeat);
-      gl_FragColor = vec4(c, a * vA * uOpacity);
+      gl_FragColor = vec4(c, a * vA * uOpacity * uLuce);
     }`,
 }));
 batt.position.z = battZ;
