@@ -1,0 +1,24 @@
+@import "./fonts/caratteri.css";
+/* la pagina di un articolo: stessi colori e caratteri della seconda pagina, una colonna sola da leggere */
+:root { --nero: #2b0d0c; --crema: #F5E4CB; --rosso-vivo: #d0462e; --pad: clamp(20px, 6vw, 90px); }
+html, body { margin: 0; background: #3a100d; color: var(--crema); font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+.testa { display: flex; justify-content: space-between; align-items: center; padding: 26px var(--pad); }
+.logo img { height: 34px; display: block; mix-blend-mode: screen; }
+.torna { font-size: 12px; letter-spacing: .28em; text-transform: uppercase; text-decoration: none; opacity: .75; }
+.torna:hover { opacity: 1; }
+.pezzo { max-width: 720px; margin: 0 auto; padding: 8vh var(--pad) 12vh; }
+.pezzo time { font-size: 12px; letter-spacing: .28em; text-transform: uppercase; color: var(--rosso-vivo); }
+.pezzo h1 { font-family: 'Anton', sans-serif; font-weight: 400; text-transform: uppercase; font-size: clamp(40px, 6vw, 82px); line-height: .95; margin: 18px 0 0; }
+.sommario { font-family: 'EB Garamond', serif; font-style: italic; font-size: clamp(21px, 2vw, 27px); line-height: 1.35; opacity: .9; margin: 26px 0 0; }
+.cop { margin: 44px 0 0; }
+.cop img { width: 100%; display: block; }
+.corpo { font-family: 'EB Garamond', serif; font-size: 21px; line-height: 1.55; margin-top: 44px; }
+.corpo h2 { font-family: 'Anton', sans-serif; font-weight: 400; text-transform: uppercase; font-size: 30px; line-height: 1; margin: 50px 0 0; }
+.corpo p, .corpo ul { margin: 22px 0 0; }
+.corpo blockquote { margin: 30px 0 0; padding-left: 22px; border-left: 2px solid var(--rosso-vivo); font-style: italic; font-size: 24px; }
+.corpo a { text-decoration-color: rgba(245, 228, 203, .4); text-underline-offset: 3px; }
+.attesa { font-family: 'EB Garamond', serif; font-style: italic; font-size: 22px; opacity: .7; }
+.piede { text-align: center; padding: 8vh var(--pad) 10vh; border-top: 1px solid rgba(245, 228, 203, .15); }
+.piede .motto { font-family: 'EB Garamond', serif; font-size: 24px; margin: 0 0 18px; }
+.piede a { font-size: 12px; letter-spacing: .28em; text-transform: uppercase; text-decoration: none; opacity: .75; }

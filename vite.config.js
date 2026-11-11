@@ -10,6 +10,8 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         chiSiamo: resolve(__dirname, 'chi-siamo.html'),
         testAudio: resolve(__dirname, 'test-audio.html'),
+        articolo: resolve(__dirname, 'articolo.html'),
+        gestione: resolve(__dirname, 'gestione.html'),
       },
     },
   },

@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import Lenis from 'lenis';
 import { FORMATI } from './formati.js';
 import { storia } from './storia.js';
+import { leggi, inserisci, segnala, indirizzoCopertina } from './dati.js';
+import { dataItaliana } from './testo.js';
+segnala('chi-siamo', 'arrivo');
 
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -434,11 +437,12 @@ function stripMotion() {
 }
 
 /* ------------------------------------------------------------------ */
-/* tesserati: la richiesta parte come mail a Locus, dall'app di posta di chi compila */
+/* tesserati: la richiesta entra nel registro delle tessere, in attesa; se l'archivio non risponde
+   si torna alla mail già scritta, come prima */
 /* ------------------------------------------------------------------ */
 const join = $('#join');
 const joinMsg = $('#join-msg');
-join.addEventListener('submit', (e) => {
+join.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!join.checkValidity()) {
     join.classList.add('tried');
@@ -462,7 +466,44 @@ join.addEventListener('submit', (e) => {
     'Dichiaro di avere più di 18 anni, di aver letto lo statuto e acconsento al trattamento dei dati per il tesseramento.',
   ];
   const oggetto = `Richiesta di tesseramento: ${d.nome} ${d.cognome}`;
-  location.href = `mailto:locus.parma@gmail.com?subject=${encodeURIComponent(oggetto)}&body=${encodeURIComponent(righe.join(String.fromCharCode(10)))}`;
-  joinMsg.textContent = "Si è aperta la tua app di posta con la richiesta già scritta: premi invia. Se non si apre nulla, scrivi a locus.parma@gmail.com.";
+  const bottone = join.querySelector('button[type=submit], button:not([type])');
+  if (bottone) bottone.disabled = true;
+  joinMsg.textContent = 'Invio in corso…';
+  try {
+    await inserisci('tessere', {
+      nome: d.nome.trim(), cognome: d.cognome.trim(), data_nascita: d.nascita, luogo_nascita: d.luogo.trim(),
+      codice_fiscale: d.cf.toUpperCase().trim(), comune_residenza: d.residenza.trim(),
+      email: d.email.trim(), telefono: (d.telefono || '').trim() || null,
+      maggiorenne: true, consenso_privacy: true,
+    });
+    segnala('chi-siamo', 'richiesta-tessera');
+    join.reset();
+    join.classList.remove('tried');
+    joinMsg.textContent = `Richiesta arrivata. Ti scriviamo a ${d.email.trim()} con i dati per versare la quota.`;
+  } catch (err) {
+    location.href = `mailto:locus.parma@gmail.com?subject=${encodeURIComponent(oggetto)}&body=${encodeURIComponent(righe.join(String.fromCharCode(10)))}`;
+    joinMsg.textContent = "Si è aperta la tua app di posta con la richiesta già scritta: premi invia. Se non si apre nulla, scrivi a locus.parma@gmail.com.";
+  } finally {
+    if (bottone) bottone.disabled = false;
+  }
 });
+
+/* ------------------------------------------------------------------ */
+/* diario: gli ultimi articoli pubblicati dal gestionale                */
+/* ------------------------------------------------------------------ */
+leggi('articoli?select=titolo,slug,sommario,copertina,pubblicato_il&stato=eq.pubblicato&order=pubblicato_il.desc&limit=6')
+  .then((articoli) => {
+    if (!articoli.length) return;
+    $('#diario-griglia').innerHTML = articoli.map((a) => `
+      <a class="articolo" href="articolo.html?a=${encodeURIComponent(a.slug)}">
+        ${a.copertina ? `<span class="cop"><img src="${indirizzoCopertina(a.copertina)}" alt="" loading="lazy" /></span>` : ''}
+        <time>${dataItaliana(a.pubblicato_il)}</time>
+        <h3>${esc(a.titolo)}</h3>
+        ${a.sommario ? `<p>${esc(a.sommario)}</p>` : ''}
+      </a>`).join('');
+    $('#diario').hidden = false;
+    $('#menu-diario').hidden = false;
+    lenis.resize();
+  })
+  .catch(() => {});
 

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#2b0d0c" />
+  <title>Locus · Gestione</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%232b0d0c'/%3E%3Cpath d='M9 6h6v16h9v4H9z' fill='%23d0462e'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/src/gestione.css" />
+</head>
+<body>
+  <!-- accesso -->
+  <section id="accesso" class="schermo" hidden>
+    <form id="f-accesso" class="scheda stretta">
+      <img class="logo" src="/img/logo-locus.jpg" alt="locus" />
+      <h1>Gestione</h1>
+      <label>Email<input name="email" type="email" autocomplete="username" required /></label>
+      <label>Password<input name="password" type="password" autocomplete="current-password" required /></label>
+      <button class="primo" type="submit">Entra</button>
+      <button class="link" type="button" id="dimenticata">Ho dimenticato la password</button>
+      <p class="msg" id="msg-accesso" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <!-- nuova password, dopo il link arrivato per mail -->
+  <section id="nuova" class="schermo" hidden>
+    <form id="f-nuova" class="scheda stretta">
+      <h1>Nuova password</h1>
+      <label>Nuova password (almeno 8 caratteri)<input name="password" type="password" minlength="8" autocomplete="new-password" required /></label>
+      <button class="primo" type="submit">Salva la password</button>
+      <p class="msg" id="msg-nuova" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <!-- il gestionale -->
+  <section id="app" hidden>
+    <header class="barra">
+      <img class="logo" src="/img/logo-locus.jpg" alt="locus" />
+      <nav id="schede"></nav>
+      <div class="chi">
+        <span id="chi-sono"></span>
+        <button class="link" id="cambia-pw">cambia password</button>
+        <button class="link" id="esci">esci</button>
+      </div>
+    </header>
+    <main id="vista"></main>
+  </section>
+
+  <script type="module" src="/src/gestione.js"></script>
+</body>
+</html>

@@ -5,9 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#2b0d0c" />
   <title>Locus · Riempi il vuoto</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <meta name="description" content="Locus, cultura urbana e comunità a Parma. Un media, una comunità, una voce per gli under 35." />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="it_IT" />
+  <meta property="og:site_name" content="Locus" />
+  <meta property="og:title" content="Locus · Riempi il vuoto" />
+  <meta property="og:description" content="Locus, cultura urbana e comunità a Parma. Un media, una comunità, una voce per gli under 35." />
+  <meta property="og:image" content="https://cristianocugini1-rgb.github.io/locus-sito-prototipo/anteprima-social.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%232b0d0c'/%3E%3Cpath d='M9 6h6v16h9v4H9z' fill='%23d0462e'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
@@ -18,8 +26,10 @@
     <!-- apertura -->
     <section class="layer hero" id="l-hero">
       <h1 class="title hero-title">Riempi<br />il vuoto.</h1>
-      <p class="hint" id="hint">tocca la bolla, oppure scorri</p>
+      <p class="hint" id="hint">tocca la bolla e lasciati guidare, oppure scorri</p>
     </section>
+    <!-- accanto alla L: chi ha fretta salta tutta l'introduzione -->
+    <a class="layer salta" id="l-salta" href="chi-siamo.html" data-dissolve>vai dritto a Chi siamo <i>&rarr;</i></a>
 
     <!-- i tre anelli -->
     <section class="layer ring-label" id="l-r1">
@@ -51,7 +61,8 @@
   <!-- ingresso: serve anche ad accendere l'audio -->
   <div id="gate">
     <div class="mirino"><span></span><span></span><span></span><span></span><b>locus</b></div>
-    <button id="enter">entra</button>
+    <div class="carica" id="carica"><i></i></div>
+    <button id="enter" disabled>entra</button>
   </div>
 
   <nav id="topnav">

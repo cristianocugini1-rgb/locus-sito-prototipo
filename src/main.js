@@ -9,6 +9,8 @@ import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 import Lenis from 'lenis';
 import { storia, daStoria } from './storia.js';
 import { creaMondi } from './mondi.js';
+import { segnala } from './dati.js';
+segnala('home', 'arrivo');
 
 /* ------------------------------------------------------------------ */
 /* utilità                                                             */
@@ -20,6 +22,14 @@ const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const win = (p, a, b, c, d) => Math.min(seg(p, a, b), 1 - seg(p, c, d));
 const isTouch = matchMedia('(hover: none)').matches;
 const small = Math.min(innerWidth, innerHeight) < 700;
+// versione leggera per i dispositivi deboli: meno grani, meno risoluzione, stesso racconto.
+// ?leggero la forza per le prove, ?pieno la toglie.
+const Q = new URLSearchParams(location.search);
+const cores = navigator.hardwareConcurrency || 8, memoria = navigator.deviceMemory || 8;
+const LEGGERO = Q.has('leggero') || (!Q.has('pieno') && (isTouch ? (cores <= 6 || memoria <= 4) : (cores <= 4 && memoria <= 4)));
+// chi ha chiesto al sistema meno movimento: niente rollio, niente sfocatura, visita guidata più calma
+const MENO_MOTO = matchMedia('(prefers-reduced-motion: reduce)').matches || Q.has('calmo');
+const smallQ = small || LEGGERO;
 
 const COL = {
   rosso: new THREE.Color('#800200'),
@@ -35,7 +45,7 @@ const COL = {
 /* ------------------------------------------------------------------ */
 const canvas = document.getElementById('gl');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(devicePixelRatio, LEGGERO ? 1.5 : 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.NeutralToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -501,7 +511,7 @@ const bubble = new THREE.Mesh(
 hero.add(bubble);
 
 // goccioline che volano via quando la bolla scoppia
-const DROPS = small ? 700 : 1400;
+const DROPS = smallQ ? 600 : 1400;
 const dropGeo = new THREE.BufferGeometry();
 const dropDir = new Float32Array(DROPS * 3);
 const dropPos = new Float32Array(DROPS * 3);
@@ -523,7 +533,7 @@ hero.add(drops);
 /* ------------------------------------------------------------------ */
 let dustMat;
 {
-  const N = small ? 1500 : 3000;
+  const N = LEGGERO ? 900 : small ? 1500 : 3000;
   const g = new THREE.BufferGeometry();
   const p = new Float32Array(N * 3);
   for (let i = 0; i < N; i++) {
@@ -731,7 +741,7 @@ RINGS.forEach((r, i) => {
     veloUni, vdPos, vdVel, vdGeo, vdMat, ND, rotto: false, popT: 1, dropT: 1, disco, discoUni, passato: false, uInner, innerGlow, filMat });
 });
 
-const mondi = PORTALE ? creaMondi(scene, { ringZ: RINGS.map((r) => r.z), small }) : null;
+const mondi = PORTALE ? creaMondi(scene, { ringZ: RINGS.map((r) => r.z), small: smallQ }) : null;
 
 /* ------------------------------------------------------------------ */
 /* 3. FOTO SOSPESE: galleggiano a profondità diverse e ci si vola in mezzo */
@@ -949,7 +959,7 @@ function battisteroSolido(N) {
   }
   return { pos, nor };
 }
-const BN = BATT_SOLIDO ? (small ? 26000 : 60000) : (small ? 9000 : 18000);
+const BN = BATT_SOLIDO ? (LEGGERO ? 14000 : small ? 26000 : 60000) : (smallQ ? 9000 : 18000);
 const bGeo = new THREE.BufferGeometry();
 const bSolido = BATT_SOLIDO ? battisteroSolido(BN) : null;
 const bTarget = BATT_SOLIDO ? bSolido.pos : battisteroPoints(BN);
@@ -1148,12 +1158,28 @@ document.body.classList.add('locked');
 const $ = (id) => document.getElementById(id);
 const gate = $('gate'), cursor = $('cursor'), veil = $('veil');
 const layers = {
-  hero: $('l-hero'), r: [$('l-r1'), $('l-r2'), $('l-r3')], gal: $('l-gal'), batt: $('l-batt'), end: $('l-end'),
+  hero: $('l-hero'), salta: $('l-salta'), r: [$('l-r1'), $('l-r2'), $('l-r3')], gal: $('l-gal'), batt: $('l-batt'), end: $('l-end'),
 };
 const goLinks = [...document.querySelectorAll('.go')];
+$('l-salta').addEventListener('click', () => segnala('home', 'salta'));
 if (isTouch) document.querySelectorAll('[data-touch]').forEach((el) => { el.textContent = el.dataset.touch; });
 
 $('enter').addEventListener('click', () => apri());
+// ingresso: la linea sottile segue il caricamento di modelli, foto e riflessi; "entra" compare a carico finito
+// (dopo 9 secondi compare comunque, così una foto lenta non blocca nessuno)
+{
+  const barra = $('carica'), entra = $('enter');
+  let pronto = false;
+  const fine = () => {
+    if (pronto) return;
+    pronto = true;
+    barra.firstElementChild.style.transform = 'scaleX(1)';
+    setTimeout(() => { barra.classList.add('pronta'); entra.disabled = false; }, 450);
+  };
+  THREE.DefaultLoadingManager.onProgress = (_, fatti, totali) => { barra.firstElementChild.style.transform = `scaleX(${(fatti / totali).toFixed(3)})`; };
+  THREE.DefaultLoadingManager.onLoad = fine;
+  setTimeout(fine, 9000);
+}
 function apri() {
   gate.classList.add('out');
   document.body.classList.add('entered');
@@ -1203,7 +1229,7 @@ addEventListener('click', (e) => {
   ray.setFromCamera(mouse, camera);
   if (hero.visible && !popped && ray.intersectObject(bubble).length) {
     pop();
-    lenis.scrollTo(innerHeight * 1.2, { duration: 3.2, easing: (t) => 1 - Math.pow(1 - t, 3) });
+    avviaGuida();
     return;
   }
   if (focused) { unfocus(); return; }
@@ -1221,6 +1247,61 @@ function focusCard(m) {
 function unfocus() {
   focused = null;
   lenis.start();
+}
+
+/* ------------------------------------------------------------------ */
+/* visita guidata: toccando la bolla la camera fa da sola il viaggio    */
+/* fino al Battistero, in 14 secondi, con una regia morbida            */
+/* ------------------------------------------------------------------ */
+// La camera non va dritta come sui binari: si sposta di lato in curve larghe e si inclina appena nelle curve,
+// come un drone guidato con calma (rollio massimo di circa 4 gradi). Prima del Battistero sale un poco e
+// gira attorno all'edificio guardandolo. Basta toccare la rotella o lo schermo per riprendere il comando.
+const GUIDA_FINE = 0.865, GUIDA_DURATA = Number(Q.get('guida')) || 14;
+const guida = { on: false, k: 0, t0: 0 };
+function avviaGuida() {
+  segnala('home', 'guida');
+  guida.on = true;
+  guida.t0 = performance.now();
+  lenis.scrollTo(GUIDA_FINE * lenis.limit, {
+    duration: GUIDA_DURATA,
+    easing: (x) => 0.5 - 0.5 * Math.cos(Math.PI * x), // parte piano, prende velocità, si posa piano
+    force: true,
+    onComplete: () => { guida.on = false; },
+  });
+}
+function fermaGuida() {
+  // il clic che ha avviato la guida porta con sé altri eventi: li ignoro nel primo mezzo secondo
+  if (!guida.on || performance.now() - guida.t0 < 500) return;
+  guida.on = false;
+  lenis.scrollTo(lenis.scroll, { immediate: true, force: true });
+}
+['wheel', 'touchstart', 'pointerdown', 'keydown'].forEach((ev) => addEventListener(ev, fermaGuida, { passive: true }));
+const regia = { x: 0, y: 0, lx: 0, ly: 0, lz: 0, roll: 0, fov: 0 };
+function calcolaRegia(p) {
+  const m = MENO_MOTO ? 0.5 : 1;
+  // nel volo tra i cerchi: curve larghe a destra e a sinistra, la camera si inclina dentro la curva
+  const f = seg(p, 0.1, 0.5);
+  const giro = f * Math.PI * 2 * 1.5;
+  let x = Math.sin(giro) * 0.95 * Math.sin(f * Math.PI);
+  let y = 0.25 * Math.sin(f * Math.PI * 3 + 0.6) * Math.sin(f * Math.PI);
+  let roll = -Math.cos(giro) * 0.07 * Math.sin(f * Math.PI);
+  // tra le foto la camera scivola piano di lato, come un carrello
+  const g = win(p, 0.5, 0.56, 0.68, 0.73);
+  x += Math.sin(seg(p, 0.5, 0.73) * Math.PI) * -0.6 * g;
+  // verso il Battistero: sale un poco e gira attorno all'edificio, guardandolo
+  const b = ease(seg(p, 0.72, GUIDA_FINE));
+  x = lerp(x, -1.8 * Math.sin(b * Math.PI * 0.9), b);
+  y = lerp(y, 1.1 * b, b);
+  roll = lerp(roll, 0.03 * Math.sin(b * Math.PI), b);
+  regia.x = x * m;
+  regia.y = y * m;
+  regia.roll = MENO_MOTO ? 0 : roll;
+  // dove guarda: davanti a sé nel volo, il centro del Battistero alla fine
+  regia.lx = lerp(x * 0.35, 0, b) * m;
+  regia.ly = lerp(0, -0.4, b) * m;
+  regia.lz = b;
+  // nei tratti veloci il campo visivo si allarga di poco: dà il senso della velocità senza scossoni
+  regia.fov = MENO_MOTO ? 0 : clamp(Math.abs(vel), 0, 1.2) * 2.5;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1256,7 +1337,7 @@ const clock = new THREE.Clock();
 
 // qualità adattiva: se il computer fatica, si abbassa la risoluzione; se c'è margine, si rialza
 const PR_MAX = renderer.getPixelRatio();
-const PR_MIN = Math.min(PR_MAX, 1.25); // sotto, sui telefoni l'immagine si sgrana
+const PR_MIN = Math.min(PR_MAX, LEGGERO ? 1 : 1.25); // sotto, sui telefoni l'immagine si sgrana
 let pr = PR_MAX, qAcc = 0, qFrames = 0, qGood = 0;
 function setPR(v) {
   pr = v;
@@ -1290,10 +1371,19 @@ function frame(time) {
   /* camera */
   const cz = cameraZ(p);
   const flight = seg(p, 0.12, 0.5);
-  camera.position.set(mouseS.x * 0.45, mouseS.y * 0.3, cz);
-  camera.lookAt(mouseS.x * 0.15, mouseS.y * 0.1, cz - 10);
-  camera.rotateZ(Math.sin(flight * Math.PI * 2) * 0.09 * Math.sin(flight * Math.PI));
+  // la regia della visita guidata entra e esce dolcemente (in circa un secondo), così niente salti
+  guida.k = lerp(guida.k, guida.on ? 1 : 0, 1 - Math.exp(-dt * 2.2));
+  if (guida.k > 0.001) calcolaRegia(p);
+  const gk = guida.k;
+  camera.position.set(mouseS.x * 0.45 * (1 - gk) + regia.x * gk, mouseS.y * 0.3 * (1 - gk) + regia.y * gk, cz);
+  tmpV.set(mouseS.x * 0.15 * (1 - gk) + regia.lx * gk, mouseS.y * 0.1 * (1 - gk) + regia.ly * gk, cz - 10);
+  if (gk > 0.001 && regia.lz > 0) tmpV.lerp(bUni.uCenter.value, regia.lz * gk);
+  camera.lookAt(tmpV);
+  if (!MENO_MOTO) camera.rotateZ(Math.sin(flight * Math.PI * 2) * 0.09 * Math.sin(flight * Math.PI) * (1 - gk) + regia.roll * gk);
+  const fovVoluto = THREE.MathUtils.radToDeg(2 * Math.atan(tanV)) + regia.fov * gk;
+  if (Math.abs(camera.fov - fovVoluto) > 0.01) { camera.fov = fovVoluto; camera.updateProjectionMatrix(); }
   // passando un cerchio l'immagine si sfoca per un istante, come su Igloo, e torna nitida in un terzo di secondo
+  if (MENO_MOTO) scossa = 0;
   sfocaPass.enabled = scossa > 0.003;
   sfocaPass.uniforms.uS.value = scossa;
   scossa *= Math.exp(-dt * 6.0); // dall'11/11 più forte e un filo più lunga
@@ -1499,8 +1589,12 @@ function frame(time) {
 
   /* apertura e chiusura */
   showLayer(layers.hero, gate.classList.contains('out') ? 1 - seg(p, 0.012, 0.05) : 0);
+  const saltaV = gate.classList.contains('out') && !guida.on ? 0.75 * (1 - seg(p, 0.006, 0.03)) : 0;
+  layers.salta.style.opacity = saltaV.toFixed(3);
+  layers.salta.style.pointerEvents = saltaV > 0.3 ? 'auto' : 'none';
   const endV = seg(p, 0.92, 0.96); // dall'11/11 un po' prima (era 0,94 a 0,985): "Chi siamo" arriva prima
   showLayer(layers.end, endV);
+  if (endV > 0.6) segnala('home', 'fine-percorso');
   goLinks.forEach((l) => { l.style.pointerEvents = endV > 0.6 ? 'auto' : 'none'; });
 
   /* suono: il colore cambia con la sezione e si apre con la velocità */

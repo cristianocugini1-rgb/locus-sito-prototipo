@@ -6,9 +6,16 @@
   <meta name="theme-color" content="#140404" />
   <title>Locus · Chi siamo</title>
   <meta name="description" content="Locus, cultura urbana e comunità a Parma. Un media, una comunità, una voce per gli under 35." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="it_IT" />
+  <meta property="og:site_name" content="Locus" />
+  <meta property="og:title" content="Locus · Chi siamo" />
+  <meta property="og:description" content="Locus, cultura urbana e comunità a Parma. Un media, una comunità, una voce per gli under 35." />
+  <meta property="og:image" content="https://cristianocugini1-rgb.github.io/locus-sito-prototipo/anteprima-social.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%232b0d0c'/%3E%3Cpath d='M9 6h6v16h9v4H9z' fill='%23d0462e'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/src/chi.css" />
 </head>
 <body>
@@ -23,6 +30,7 @@
       <a href="#format">Format</a>
       <a href="#eventi">Eventi</a>
       <a href="#futuro">Futuro</a>
+      <a href="#diario" id="menu-diario" hidden>Diario</a>
       <a href="#tesserati" class="hl">Tesserati</a>
       <a href="#contatti">Contatti</a>
     </nav>
@@ -256,6 +264,13 @@
     </section>
 
     <!-- INSTAGRAM -->
+    <!-- DIARIO: gli articoli scritti dal gestionale; la sezione resta nascosta finché non ce n'è almeno uno -->
+    <section id="diario" class="block diario" data-tone="2" hidden>
+      <p class="kicker" data-r>Articoli</p>
+      <h2 class="title" data-split>Diario.</h2>
+      <div class="diario-griglia" id="diario-griglia"></div>
+    </section>
+
     <section id="instagram" class="block insta" data-tone="1">
       <div class="insta-head">
         <div>
