@@ -898,7 +898,9 @@ function battisteroPoints(N) {
 }
 // dall'11/11, sul modello della terza scena di Igloo: grani su tutte le superfici, come palline opache illuminate,
 // che arrivano da una nuvola a vortice e si compongono. ?battistero=luce torna ai grani di luce sugli spigoli.
-const BATT_SOLIDO = new URLSearchParams(location.search).get('battistero') !== 'luce';
+// dall'11/11 sera di nuovo i grani di luce (le "stelline"), scelta di Cristiano in attesa del soggetto definitivo:
+// le palline di marmo restano con ?battistero=solido, il mosaico in prove-battistero.html
+const BATT_SOLIDO = new URLSearchParams(location.search).get('battistero') === 'solido';
 function battisteroSolido(N) {
   const R = 2.4, y0 = -3.3, lv = [-3.3, -1.7, -0.7, 0.3, 1.3, 2.4];
   const ang = (k) => k * Math.PI / 4 + Math.PI / 8;                 // angolo dei vertici dell'ottagono
