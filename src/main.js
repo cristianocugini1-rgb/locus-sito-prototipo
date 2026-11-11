@@ -1154,7 +1154,7 @@ fit();
 // Quanto scroll serve per ogni tratto del percorso: LUNGO per i cerchi (0,12-0,5), FOTO per le foto (0,5-0,72),
 // il resto com'era. Le soglie di tutta la coreografia restano le stesse: si deforma solo il passaggio dallo scroll
 // al percorso. ?lungo=2.2 e ?foto=2 per provare.
-const LUNGO = Number(Q.get('lungo')) || 2.1;
+const LUNGO = Number(Q.get('lungo')) || 2.3;
 const FOTO = Number(Q.get('foto')) || 2.2;
 const PAG = 1100;
 const TRATTI = [[0, 0.12, 1], [0.12, 0.5, LUNGO], [0.5, 0.72, FOTO], [0.72, 1, 1]];
@@ -1323,7 +1323,7 @@ function calcolaRegia(p) {
 // Dall'11/11 sera (scelta di Cristiano): la camera passa veloce dentro i cerchi e rallenta nei mondi tra un cerchio
 // e l'altro, così il passaggio è uno slancio e il mondo si guarda con calma. CERCHI: quante volte più veloce
 // sul cerchio rispetto ai tratti in mezzo (?cerchi=4 per provare). Il percorso si calcola una volta in una tabella.
-const CERCHI = Number(Q.get('cerchi')) || 2.8;
+const CERCHI = Number(Q.get('cerchi')) || 2;
 const VOLO = (() => {
   const Z0 = 7, Z1 = -58, N = 600, zs = [], ts = [0];
   const vel = (z) => {
