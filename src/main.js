@@ -1151,6 +1151,19 @@ fit();
 /* ------------------------------------------------------------------ */
 /* scroll morbido e interfaccia                                        */
 /* ------------------------------------------------------------------ */
+// Quanto scroll serve per ogni tratto del percorso: LUNGO per i cerchi (0,12-0,5), FOTO per le foto (0,5-0,72),
+// il resto com'era. Le soglie di tutta la coreografia restano le stesse: si deforma solo il passaggio dallo scroll
+// al percorso. ?lungo=2.2 e ?foto=2 per provare.
+const LUNGO = Number(Q.get('lungo')) || 1.9;
+const FOTO = Number(Q.get('foto')) || 1.7;
+const PAG = 1100;
+const TRATTI = [[0, 0.12, 1], [0.12, 0.5, LUNGO], [0.5, 0.72, FOTO], [0.72, 1, 1]];
+const PAG_LUNGA = TRATTI.reduce((s, [a, b, k]) => s + (b - a) * PAG * k, 0);
+{ let r = 0; for (const t of TRATTI) { t.push(r, r + ((t[1] - t[0]) * PAG * t[2]) / PAG_LUNGA); r = t[4]; } }
+// dallo scroll (0-1) al punto del percorso (0-1), e il contrario
+const percorso = (r) => { const t = TRATTI.find((x) => r <= x[4]) || TRATTI.at(-1); return lerp(t[0], t[1], seg(r, t[3], t[4])); };
+const scrollDi = (q) => { const t = TRATTI.find((x) => q <= x[1]) || TRATTI.at(-1); return lerp(t[3], t[4], seg(q, t[0], t[1])); };
+document.getElementById('scroll').style.height = `${PAG_LUNGA}svh`;
 const lenis = new Lenis({ lerp: 0.07, smoothWheel: true, syncTouch: true, syncTouchLerp: 0.075 });
 lenis.stop();
 document.body.classList.add('locked');
@@ -1262,7 +1275,7 @@ function avviaGuida() {
   segnala('home', 'guida');
   guida.on = true;
   guida.t0 = performance.now();
-  lenis.scrollTo(GUIDA_FINE * lenis.limit, {
+  lenis.scrollTo(scrollDi(GUIDA_FINE) * lenis.limit, {
     duration: GUIDA_DURATA,
     easing: (x) => 0.5 - 0.5 * Math.cos(Math.PI * x), // parte piano, prende velocità, si posa piano
     force: true,
@@ -1307,9 +1320,31 @@ function calcolaRegia(p) {
 /* ------------------------------------------------------------------ */
 /* coreografia legata allo scroll                                      */
 /* ------------------------------------------------------------------ */
+// Dall'11/11 sera (scelta di Cristiano): la camera passa veloce dentro i cerchi e rallenta nei mondi tra un cerchio
+// e l'altro, così il passaggio è uno slancio e il mondo si guarda con calma. CERCHI: quante volte più veloce
+// sul cerchio rispetto ai tratti in mezzo (?cerchi=4 per provare). Il percorso si calcola una volta in una tabella.
+const CERCHI = Number(Q.get('cerchi')) || 4;
+const VOLO = (() => {
+  const Z0 = 7, Z1 = -58, N = 600, zs = [], ts = [0];
+  const vel = (z) => {
+    let v = 1;
+    for (const r of [-14, -32, -50]) v += (CERCHI - 1) * Math.exp(-(((z - r) / 3.4) ** 2));
+    const dai = Math.min(Z0 - z, z - Z1); // partenza e arrivo dolci
+    return Math.max(v, 0.12) * (0.18 + 0.82 * Math.min(1, dai / 6) ** 0.8);
+  };
+  for (let i = 0; i <= N; i++) zs.push(lerp(Z0, Z1, i / N));
+  for (let i = 1; i <= N; i++) ts.push(ts[i - 1] + (Z0 - Z1) / N / vel((zs[i] + zs[i - 1]) / 2));
+  const T = ts[N];
+  return (f) => {
+    const t = clamp(f) * T;
+    let a = 0, b = N;
+    while (b - a > 1) { const m = (a + b) >> 1; if (ts[m] <= t) a = m; else b = m; }
+    return lerp(zs[a], zs[b], (t - ts[a]) / Math.max(ts[b] - ts[a], 1e-9));
+  };
+})();
 function cameraZ(p) {
   if (p < 0.12) return lerp(9, 7, ease(seg(p, 0, 0.12)));
-  if (p < 0.5) return lerp(7, -58, ease(seg(p, 0.12, 0.5)));
+  if (p < 0.5) return VOLO(seg(p, 0.12, 0.5));
   if (p < 0.72) return -58;
   if (p < 0.92) return lerp(-58, -64, ease(seg(p, 0.72, 0.92)));
   return lerp(-64, -63, ease(seg(p, 0.92, 1)));
@@ -1363,7 +1398,7 @@ function frame(time) {
   lenis.raf(time);
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
-  const p = lenis.limit > 0 ? clamp(lenis.scroll / lenis.limit) : 0;
+  const p = lenis.limit > 0 ? percorso(clamp(lenis.scroll / lenis.limit)) : 0;
   vel = lerp(vel, clamp(lenis.velocity / 30, -1.5, 1.5), 0.08);
   mouseS.lerp(mouse, 0.06);
   hot = false;
@@ -1633,7 +1668,7 @@ try { saved = sessionStorage.getItem('locus-home'); } catch (e) {}
 if (daStoria() && saved !== null) riprendi(Number(saved) || 0);
 if (import.meta.env.DEV && new URLSearchParams(location.search).has('vai')) {
   const q = Number(new URLSearchParams(location.search).get('vai')) || 0;
-  setTimeout(() => riprendi(q * lenis.limit), 400);
+  setTimeout(() => riprendi(scrollDi(q) * lenis.limit), 400);
 }
 // pagina ripresa dalla memoria del browser: tutto è com'era, basta togliere il velo e far ripartire lo scroll
 addEventListener('pageshow', (e) => {
