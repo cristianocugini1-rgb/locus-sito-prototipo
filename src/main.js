@@ -1155,7 +1155,7 @@ fit();
 // il resto com'era. Le soglie di tutta la coreografia restano le stesse: si deforma solo il passaggio dallo scroll
 // al percorso. ?lungo=2.2 e ?foto=2 per provare.
 const LUNGO = Number(Q.get('lungo')) || 1.9;
-const FOTO = Number(Q.get('foto')) || 1.7;
+const FOTO = Number(Q.get('foto')) || 2.2;
 const PAG = 1100;
 const TRATTI = [[0, 0.12, 1], [0.12, 0.5, LUNGO], [0.5, 0.72, FOTO], [0.72, 1, 1]];
 const PAG_LUNGA = TRATTI.reduce((s, [a, b, k]) => s + (b - a) * PAG * k, 0);
