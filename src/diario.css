@@ -75,7 +75,8 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 /* un articolo senza foto: al posto della foto la L di Locus su rosso */
 .pg figure.senza { background: var(--rosso); display: grid; place-items: center; }
 .pg figure.senza img { width: 34%; height: auto; object-fit: contain; filter: none; }
-.pg h2 { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+/* il taglio a 4 righe non deve mangiare gli accenti delle maiuscole (PERCHÉ, È) */
+.pg h2 { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.08; padding-top: .14em; margin-top: calc(var(--W) * .025 - .14em) !important; }
 .pg .somm { display: -webkit-box; -webkit-line-clamp: 9; -webkit-box-orient: vertical; overflow: hidden; }
 
 /* il bordo del libro: copertina rigida che sporge, spessore delle pagine sui lati */
