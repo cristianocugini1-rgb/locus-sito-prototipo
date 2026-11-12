@@ -141,7 +141,7 @@ html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent
 @keyframes bar { 0%, 100% { transform: scaleY(.25); } 50% { transform: scaleY(1); } }
 
 /* cursore a mirino */
-#cursor {
+#cursor { will-change: transform;
   position: fixed; top: 0; left: 0; z-index: 30; pointer-events: none;
   width: 34px; height: 34px; margin: -17px 0 0 -17px;
   transition: width .5s cubic-bezier(.2,.8,.2,1), height .5s cubic-bezier(.2,.8,.2,1), margin .5s cubic-bezier(.2,.8,.2,1);

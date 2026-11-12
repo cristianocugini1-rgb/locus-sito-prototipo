@@ -260,7 +260,7 @@ figcaption { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1
 }
 
 /* cursore, grana, velo: come nella pagina iniziale */
-#cursor { position: fixed; top: 0; left: 0; z-index: 200; pointer-events: none; width: 34px; height: 34px; margin: -17px 0 0 -17px; transition: width .5s var(--ease), height .5s var(--ease), margin .5s var(--ease); }
+#cursor { will-change: transform; position: fixed; top: 0; left: 0; z-index: 200; pointer-events: none; width: 34px; height: 34px; margin: -17px 0 0 -17px; transition: width .5s var(--ease), height .5s var(--ease), margin .5s var(--ease); }
 #cursor span { position: absolute; width: 8px; height: 8px; border-color: var(--crema); border-style: solid; border-width: 0; }
 #cursor span:nth-child(1) { top: 0; left: 0; border-top-width: 2px; border-left-width: 2px; }
 #cursor span:nth-child(2) { top: 0; right: 0; border-top-width: 2px; border-right-width: 2px; }

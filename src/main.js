@@ -1335,10 +1335,15 @@ let lastTouch = -1e9;
 const onPointer = (e) => {
   mouse.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   cur.tx = e.clientX; cur.ty = e.clientY;
+  // il mirino si sposta qui, subito, e non nel ciclo della scena: così non dipende dagli fps del 3D
+  cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
   pointerSeen = true;
   if (e.pointerType !== 'mouse') lastTouch = performance.now();
 };
 addEventListener('pointermove', onPointer);
+// sopra un link o un pulsante: lo si sa dagli eventi, senza cercarlo nella pagina a ogni fotogramma
+let overLink = false;
+addEventListener('pointerover', (e) => { overLink = !!e.target.closest?.('a, button'); });
 addEventListener('pointerdown', onPointer);
 
 const ray = new THREE.Raycaster();
@@ -1736,11 +1741,8 @@ function frame(time) {
   else if (p < 0.1) mood = 0.2 + (popped ? 0.2 : 0);
 
   /* cursore */
-  cur.x = lerp(cur.x, cur.tx, 0.42);
-  cur.y = lerp(cur.y, cur.ty, 0.42);
-  cursor.style.transform = `translate(${cur.x}px, ${cur.y}px)`;
-  const overLink = document.querySelector('a:hover, button:hover');
-  cursor.classList.toggle('hot', hot || !!overLink);
+  cur.x = cur.tx; cur.y = cur.ty;
+  cursor.classList.toggle('hot', hot || overLink);
 
   aggiornaBolla(t);
   prevCamZ = cz;

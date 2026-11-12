@@ -219,8 +219,12 @@ const cur = { x: innerWidth / 2, y: innerHeight / 2, tx: innerWidth / 2, ty: inn
 const mouseUV = new THREE.Vector2(0.5, 0.5);
 addEventListener('pointermove', (e) => {
   cur.tx = e.clientX; cur.ty = e.clientY;
+  // il mirino si sposta qui, subito, e non nel ciclo della scena: così non dipende dagli fps del 3D
+  cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
   mouseUV.set(e.clientX / innerWidth, 1 - e.clientY / innerHeight);
 });
+
+addEventListener('pointerover', (e) => { cursor.classList.toggle('hot', !!e.target.closest?.('a, button, .card')); });
 
 const clock = new THREE.Clock();
 function frame(time) {
@@ -248,10 +252,6 @@ function frame(time) {
     p.img.style.transform = `scale(1.18) translateY(${(c * p.k * 100).toFixed(2)}%)`;
   }
 
-  cur.x = lerp(cur.x, cur.tx, 0.42);
-  cur.y = lerp(cur.y, cur.ty, 0.42);
-  cursor.style.transform = `translate(${cur.x}px, ${cur.y}px)`;
-  cursor.classList.toggle('hot', !!document.querySelector('a:hover, button:hover, .card:hover'));
 
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
