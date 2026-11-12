@@ -98,7 +98,7 @@ function opaco(mat, v) {
 
 // cielo, polvere e luce di ogni mondo: alto, orizzonte, basso
 const AMB = [
-  { top: '#800200', mid: '#800200', bot: '#800200', dust: '#f3c9a8', light: '#ffd2b0' }, // prima dei cerchi
+  { top: '#2b0d0c', mid: '#2b0d0c', bot: '#2b0d0c', dust: '#f3c9a8', light: '#ffd2b0' }, // prima dei cerchi
   { top: '#3d2b20', mid: '#2a1c15', bot: '#120c09', dust: '#f5e4cb', light: '#fff1dc' }, // carta: seppia, biblioteca al tramonto
   { top: '#4c0a11', mid: '#2e0509', bot: '#120204', dust: '#ffd0c0', light: '#ffd6c8' }, // fili: velluto rosso
   PORCELLANA

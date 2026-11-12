@@ -60,7 +60,7 @@ renderer.toneMapping = THREE.NeutralToneMapping;
 renderer.toneMappingExposure = 1.05;
 
 const scene = new THREE.Scene();
-const bg = new THREE.Color('#800200');
+const bg = new THREE.Color('#2b0d0c');
 scene.background = bg;
 scene.fog = new THREE.Fog(bg, 10, 44);
 
@@ -379,7 +379,7 @@ const lMesh = new THREE.Mesh(L_CARTA ? makeL(1) : makeL(), L_CARTA ? lCartaMat :
 hero.add(lMesh);
 
 // controluce: un alone caldo dietro la L, che il vetro raccoglie e accende di rosso
-const glowUni = { uBg: { value: new THREE.Color('#800200') }, uTime: { value: 0 }, uFade: { value: 1 } };
+const glowUni = { uBg: { value: new THREE.Color('#2b0d0c') }, uTime: { value: 0 }, uFade: { value: 1 } };
 const backGlow = new THREE.Mesh(
   new THREE.PlaneGeometry(9, 9),
   new THREE.ShaderMaterial({
@@ -1417,7 +1417,7 @@ function cameraZ(p) {
 }
 const BG_KEYS = [
   // dal 10/11 lo stesso rosso scuro lungo tutto il percorso (prima quasi nero, con il rosso solo nel tratto dei cerchi)
-  [0, '#800200'], [1, '#800200'], // dal 12/11 sera il rosso Locus #800200 (prima #2b0d0c)
+  [0, '#2b0d0c'], [1, '#2b0d0c'],
 ].map(([k, c]) => [k, new THREE.Color(c)]);
 function bgAt(p) {
   for (let i = 0; i < BG_KEYS.length - 1; i++) {
