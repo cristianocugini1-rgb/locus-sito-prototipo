@@ -104,7 +104,7 @@ async function listaArticoli() {
   $('#nuovo').onclick = () => editor(null);
   const { data, error } = await sb.from('articoli').select('id,titolo,slug,stato,pubblicato_il,aggiornato').order('aggiornato', { ascending: false });
   if (error) return ($('#elenco').textContent = spiegaErrore(error));
-  if (!data.length) return ($('#elenco').innerHTML = '<p class="vuoto">Ancora nessun articolo. Quando ne pubblichi uno, nella pagina Chi siamo compare la sezione Diario.</p>');
+  if (!data.length) return ($('#elenco').innerHTML = '<p class="vuoto">Ancora nessun articolo. Quando ne pubblichi uno, compare nella pagina Diario del sito.</p>');
   $('#elenco').innerHTML = `<table><thead><tr><th>Titolo</th><th>Stato</th><th>Pubblicato</th><th>Ultima modifica</th></tr></thead><tbody>${data.map((a) => `
     <tr data-id="${a.id}"><td>${esc(a.titolo)}</td><td><span class="stato ${a.stato}">${a.stato}</span></td>
     <td>${a.pubblicato_il ? dataItaliana(a.pubblicato_il) : ''}</td><td>${dataItaliana(a.aggiornato)}</td></tr>`).join('')}</tbody></table>`;

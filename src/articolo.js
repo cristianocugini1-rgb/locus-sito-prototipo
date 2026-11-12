@@ -7,7 +7,7 @@ const pezzo = document.getElementById('pezzo');
 const slug = new URLSearchParams(location.search).get('a') || '';
 
 const nonTrovato = () => {
-  pezzo.innerHTML = '<p class="attesa">Questo articolo non c\'è più, oppure l\'indirizzo è sbagliato.</p><p><a class="torna" href="chi-siamo.html#diario">&larr; torna al diario</a></p>';
+  pezzo.innerHTML = '<p class="attesa">Questo articolo non c\'è più, oppure l\'indirizzo è sbagliato.</p><p><a class="torna" href="diario.html">&larr; torna al diario</a></p>';
 };
 
 if (!/^[a-z0-9-]{1,120}$/.test(slug)) nonTrovato();

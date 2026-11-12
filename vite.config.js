@@ -11,6 +11,7 @@ export default defineConfig({
         chiSiamo: resolve(__dirname, 'chi-siamo.html'),
         testAudio: resolve(__dirname, 'test-audio.html'),
         articolo: resolve(__dirname, 'articolo.html'),
+        diario: resolve(__dirname, 'diario.html'),
         gestione: resolve(__dirname, 'gestione.html'),
       },
     },

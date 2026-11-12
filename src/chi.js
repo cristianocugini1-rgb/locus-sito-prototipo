@@ -47,7 +47,6 @@ const io = new IntersectionObserver((entries) => {
   entries.forEach((en) => {
     if (!en.isIntersecting) return;
     let id = en.target.id;
-    if (id === 'vuoto') id = 'chi';
     if (id === 'squadra' || id === 'instagram') id = 'contatti';
     links.forEach((a) => a.classList.remove('on'));
     links.get(id)?.classList.add('on');
@@ -510,22 +509,4 @@ join.addEventListener('submit', async (e) => {
   }
 });
 
-/* ------------------------------------------------------------------ */
-/* diario: gli ultimi articoli pubblicati dal gestionale                */
-/* ------------------------------------------------------------------ */
-leggi('articoli?select=titolo,slug,sommario,copertina,pubblicato_il&stato=eq.pubblicato&order=pubblicato_il.desc&limit=6')
-  .then((articoli) => {
-    if (!articoli.length) return;
-    $('#diario-griglia').innerHTML = articoli.map((a) => `
-      <a class="articolo" href="articolo.html?a=${encodeURIComponent(a.slug)}">
-        ${a.copertina ? `<span class="cop"><img src="${indirizzoCopertina(a.copertina)}" alt="" loading="lazy" /></span>` : ''}
-        <time>${dataItaliana(a.pubblicato_il)}</time>
-        <h3>${esc(a.titolo)}</h3>
-        ${a.sommario ? `<p>${esc(a.sommario)}</p>` : ''}
-      </a>`).join('');
-    $('#diario').hidden = false;
-    $('#menu-diario').hidden = false;
-    lenis.resize();
-  })
-  .catch(() => {});
 
