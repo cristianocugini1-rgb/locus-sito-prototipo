@@ -28,10 +28,10 @@
       <a href="#chi">Chi siamo</a>
       <a href="#cosa">Cosa facciamo</a>
       <a href="#format">Format</a>
+      <a href="#tesserati" class="hl">Tesserati</a>
       <a href="#eventi">Eventi</a>
       <a href="diario.html">Diario</a>
       <a href="#futuro">Futuro</a>
-      <a href="#tesserati" class="hl">Tesserati</a>
       <a href="#contatti">Contatti</a>
     </nav>
     <button id="burger" aria-label="menu"><span></span><span></span></button>
@@ -114,6 +114,42 @@
       </div>
     </section>
 
+    <!-- TESSERATI -->
+    <section id="tesserati" class="block join" data-tone="3">
+      <p class="kicker" data-r>Tesserati</p>
+      <h2 class="title" data-split>Entra in Locus.</h2>
+      <p class="lead narrow" data-r>Con la tessera diventi socio: voti in assemblea, proponi progetti, costruisci Locus con noi.</p>
+      <div class="join-grid">
+        <ol class="join-why" data-r>
+          <li><b>01</b><div><h3>Voti</h3><p>L'assemblea dei soci elegge il direttivo e approva bilancio e linee di indirizzo.</p></div></li>
+          <li><b>02</b><div><h3>Proponi</h3><p>Puoi proporre un progetto coerente con la missione di Locus.</p></div></li>
+          <li><b>03</b><div><h3>Partecipi</h3><p>Puoi entrare tra i volontari, su comunicazione, organizzazione ed eventi.</p></div></li>
+          <li class="fee"><span>Quota associativa</span><b>15 €</b><span>La tessera si rinnova ogni anno. Si paga con bonifico o PayPal: i dati te li mandiamo per mail.</span></li>
+        </ol>
+        <form class="join-form" id="join" data-r style="--d:.15s" novalidate>
+          <div class="row">
+            <label><span>Nome</span><input name="nome" autocomplete="given-name" required /></label>
+            <label><span>Cognome</span><input name="cognome" autocomplete="family-name" required /></label>
+          </div>
+          <div class="row">
+            <label><span>Data di nascita</span><input name="nascita" type="date" autocomplete="bday" required /></label>
+            <label><span>Luogo di nascita</span><input name="luogo" required /></label>
+          </div>
+          <label><span>Codice fiscale</span><input name="cf" autocomplete="off" maxlength="16" pattern="[A-Za-z0-9]{16}" required /></label>
+          <label><span>Comune di residenza</span><input name="residenza" autocomplete="address-level2" required /></label>
+          <div class="row">
+            <label><span>Email</span><input name="email" type="email" autocomplete="email" required /></label>
+            <label><span>Telefono</span><input name="telefono" type="tel" autocomplete="tel" /></label>
+          </div>
+          <label class="check"><input type="checkbox" name="maggiorenne" required /><span>Ho più di 18 anni.</span></label>
+          <label class="check"><input type="checkbox" name="statuto" required /><span>Ho letto lo statuto di Locus e chiedo di diventare socio. [link allo statuto]</span></label>
+          <label class="check"><input type="checkbox" name="privacy" required /><span>Acconsento al trattamento dei miei dati per il tesseramento. [link all'informativa privacy]</span></label>
+          <button type="submit" class="send"><span>Invia la richiesta</span><i></i></button>
+          <p class="form-msg" id="join-msg" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+
     <!-- GLI EVENTI -->
     <section id="eventi" class="block" data-tone="2">
       <p class="kicker" data-r>Cosa abbiamo fatto</p>
@@ -191,42 +227,6 @@
         <li data-r style="--d:.25s"><b>Maria Bergamaschi</b><span>Consigliera</span></li>
         <li data-r style="--d:.3s"><b>Simona Mora</b><span>Consigliera</span></li>
       </ul>
-    </section>
-
-    <!-- TESSERATI -->
-    <section id="tesserati" class="block join" data-tone="3">
-      <p class="kicker" data-r>Tesserati</p>
-      <h2 class="title" data-split>Entra in Locus.</h2>
-      <p class="lead narrow" data-r>Con la tessera diventi socio: voti in assemblea, proponi progetti, costruisci Locus con noi.</p>
-      <div class="join-grid">
-        <ol class="join-why" data-r>
-          <li><b>01</b><div><h3>Voti</h3><p>L'assemblea dei soci elegge il direttivo e approva bilancio e linee di indirizzo.</p></div></li>
-          <li><b>02</b><div><h3>Proponi</h3><p>Puoi proporre un progetto coerente con la missione di Locus.</p></div></li>
-          <li><b>03</b><div><h3>Partecipi</h3><p>Puoi entrare tra i volontari, su comunicazione, organizzazione ed eventi.</p></div></li>
-          <li class="fee"><span>Quota associativa</span><b>15 €</b><span>La tessera si rinnova ogni anno. Si paga con bonifico o PayPal: i dati te li mandiamo per mail.</span></li>
-        </ol>
-        <form class="join-form" id="join" data-r style="--d:.15s" novalidate>
-          <div class="row">
-            <label><span>Nome</span><input name="nome" autocomplete="given-name" required /></label>
-            <label><span>Cognome</span><input name="cognome" autocomplete="family-name" required /></label>
-          </div>
-          <div class="row">
-            <label><span>Data di nascita</span><input name="nascita" type="date" autocomplete="bday" required /></label>
-            <label><span>Luogo di nascita</span><input name="luogo" required /></label>
-          </div>
-          <label><span>Codice fiscale</span><input name="cf" autocomplete="off" maxlength="16" pattern="[A-Za-z0-9]{16}" required /></label>
-          <label><span>Comune di residenza</span><input name="residenza" autocomplete="address-level2" required /></label>
-          <div class="row">
-            <label><span>Email</span><input name="email" type="email" autocomplete="email" required /></label>
-            <label><span>Telefono</span><input name="telefono" type="tel" autocomplete="tel" /></label>
-          </div>
-          <label class="check"><input type="checkbox" name="maggiorenne" required /><span>Ho più di 18 anni.</span></label>
-          <label class="check"><input type="checkbox" name="statuto" required /><span>Ho letto lo statuto di Locus e chiedo di diventare socio. [link allo statuto]</span></label>
-          <label class="check"><input type="checkbox" name="privacy" required /><span>Acconsento al trattamento dei miei dati per il tesseramento. [link all'informativa privacy]</span></label>
-          <button type="submit" class="send"><span>Invia la richiesta</span><i></i></button>
-          <p class="form-msg" id="join-msg" aria-live="polite"></p>
-        </form>
-      </div>
     </section>
 
     <!-- CONTATTI -->
