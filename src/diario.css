@@ -1,14 +1,162 @@
-/* la pagina Diario: stessi colori e caratteri della pagina articolo, gli articoli in griglia */
-.diario { max-width: 1280px; margin: 0 auto; padding: 8vh var(--pad) 12vh; }
-.occhiello { font-size: 12px; letter-spacing: .28em; text-transform: uppercase; color: var(--rosso-vivo); margin: 0; }
-.diario h1 { font-family: 'Anton', sans-serif; font-weight: 400; text-transform: uppercase; font-size: clamp(56px, 9vw, 140px); line-height: .95; margin: 14px 0 0; }
-.griglia { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(18px, 3vw, 44px); margin-top: 60px; }
-.griglia .attesa { grid-column: 1 / -1; }
-.articolo { color: inherit; text-decoration: none; border-top: 1px solid rgba(245, 228, 203, .25); padding-top: 22px; display: block; }
-.articolo .cop { display: block; aspect-ratio: 4 / 3; overflow: hidden; margin: 0 0 18px; }
-.articolo img { width: 100%; height: 100%; object-fit: cover; transition: transform 1.2s cubic-bezier(.2,.8,.2,1); }
-.articolo:hover img { transform: scale(1.04); }
-.articolo time { font-size: 12px; letter-spacing: .25em; text-transform: uppercase; color: var(--rosso-vivo); }
-.articolo h2 { font-family: 'Anton', sans-serif; font-weight: 400; text-transform: uppercase; font-size: clamp(26px, 2.4vw, 38px); line-height: 1; margin: 12px 0 0; }
-.articolo p { font-family: 'EB Garamond', serif; font-size: 19px; line-height: 1.4; opacity: .85; margin: 12px 0 0; }
-@media (max-width: 900px) { .griglia { grid-template-columns: 1fr; } }
+@import "./fonts/caratteri.css";
+/* la pagina Diario: un libro da sfogliare (fondo del sito scuro, pagine carta) e la pagina di lettura su carta */
+:root {
+  --nero: #2b0d0c; --fondo: #1d0807; --crema: #F5E4CB; --carta: #f3e2c7; --rosso: #800200; --vivo: #d0462e;
+  --pad: clamp(16px, 4vw, 56px);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: radial-gradient(ellipse at 60% 40%, #3a100d, var(--fondo) 70%); color: var(--crema); font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+.testa { position: fixed; top: 0; left: 0; right: 0; z-index: 10; display: flex; align-items: center; gap: 24px; padding: 18px var(--pad); }
+/* la scritta Locus su fondo rosso, come in chi-siamo */
+.logo { display: block; height: 40px; padding: 3px 6px; background: var(--vivo); }
+.logo img { height: 100%; display: block; }
+.torna-sito { margin-left: auto; font-size: 12px; letter-spacing: .22em; text-transform: uppercase; text-decoration: none; color: inherit; opacity: .7; }
+.torna-sito:hover { opacity: 1; }
+
+.scena { height: 100%; display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); align-items: center; gap: clamp(20px, 4vw, 70px); padding: 110px var(--pad) 56px; }
+
+/* sommario a lato */
+.sommario { position: relative; align-self: center; user-select: none; touch-action: none; cursor: grab; }
+.sommario.preso { cursor: grabbing; }
+.occhiello { font-size: 11px; letter-spacing: .28em; text-transform: uppercase; color: var(--vivo); margin: 0 0 18px; }
+#voci { list-style: none; margin: 0; padding: 0 0 0 26px; border-left: 1px solid rgba(245, 228, 203, .2); }
+#voci li { padding: 10px 0; display: flex; gap: 12px; align-items: baseline; opacity: .5; transition: opacity .3s; }
+#voci li.su { opacity: 1; }
+#voci .num { font-family: 'Anton', sans-serif; font-size: 14px; color: var(--vivo); min-width: 22px; }
+#voci .tit { font-family: 'EB Garamond', serif; font-size: 18px; line-height: 1.2; }
+.segno { position: absolute; left: -7px; top: 0; width: 15px; height: 15px; border-radius: 50%; background: var(--vivo); box-shadow: 0 0 0 5px rgba(208, 70, 46, .25); pointer-events: none; }
+.aiuto { font-family: 'EB Garamond', serif; font-style: italic; font-size: 15px; opacity: .5; margin: 18px 0 0 26px; }
+
+/* il libro */
+.palco { position: relative; display: grid; place-items: center; height: 100%; min-height: 0; min-width: 0; }
+.libro { position: relative; width: calc(var(--W) * 2); height: var(--H); perspective: 2600px; perspective-origin: 50% 40%; touch-action: pan-y; user-select: none; cursor: grab; }
+.libro.preso { cursor: grabbing; }
+.libro { transform: translateX(var(--sposta, 0px)); }
+.base, .foglio { position: absolute; top: 0; width: var(--W); height: 100%; }
+.base.sx { left: 0; }
+.base.dx, .foglio { left: 50%; }
+.foglio { transform-origin: left center; transform-style: preserve-3d; }
+.faccia { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; overflow: hidden; }
+.faccia.retro { transform: rotateY(180deg); }
+.ombra { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+/* la versione che si curva: strisce una dentro l'altra */
+.striscia { position: absolute; top: 0; height: 100%; transform-origin: left center; transform-style: preserve-3d; }
+.piano { position: absolute; inset: 0; transform-style: preserve-3d; }
+.foglio.piatto > .striscia, .foglio:not(.piatto) > .piano { display: none; }
+.taglio { position: absolute; top: 0; height: 100%; width: var(--W); }
+
+/* una pagina */
+.pg { position: absolute; inset: 0; width: var(--W); background: var(--carta); color: var(--nero); padding: calc(var(--W) * .09); display: flex; flex-direction: column; }
+.pg.dx { background: linear-gradient(90deg, rgba(43, 13, 12, .16), rgba(43, 13, 12, 0) 7%), var(--carta); }
+.pg.sx { background: linear-gradient(270deg, rgba(43, 13, 12, .16), rgba(43, 13, 12, 0) 7%), var(--carta); }
+.pg figure { margin: 0; flex: 1; min-height: 0; overflow: hidden; }
+.pg figure img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.9); }
+.pg .meta { font-size: calc(var(--W) * .026); letter-spacing: .22em; text-transform: uppercase; color: var(--rosso); margin-top: calc(var(--W) * .06); }
+.pg h2 { font-family: 'Anton', sans-serif; font-weight: 400; text-transform: uppercase; font-size: calc(var(--W) * .085); line-height: .98; margin: calc(var(--W) * .025) 0 0; }
+.pg .piede { display: flex; justify-content: space-between; font-size: calc(var(--W) * .024); letter-spacing: .2em; text-transform: uppercase; opacity: .55; margin-top: calc(var(--W) * .05); }
+.pg .grande { font-family: 'Anton', sans-serif; font-size: calc(var(--W) * .3); line-height: .85; color: var(--rosso); }
+.pg .somm { font-family: 'EB Garamond', serif; font-size: calc(var(--W) * .05); line-height: 1.38; margin: auto 0 0; }
+.pg .leggi { font-size: calc(var(--W) * .028); letter-spacing: .2em; text-transform: uppercase; color: var(--rosso); margin: calc(var(--W) * .06) 0 0; }
+/* copertina, risguardo e ultima pagina */
+.pg.scura { background: var(--rosso); color: var(--crema); justify-content: center; align-items: center; text-align: center; }
+.pg.scura img { width: 40%; mix-blend-mode: screen; }
+.pg.scura p { font-family: 'EB Garamond', serif; font-style: italic; font-size: calc(var(--W) * .05); margin: calc(var(--W) * .06) 0 0; }
+.pg.copertina { justify-content: space-between; }
+.pg.copertina .grande { font-size: calc(var(--W) * .27); }
+.pg.copertina .somm { margin: 0; }
+.pg.fine { justify-content: center; }
+.pg.fine h2 { color: var(--rosso); }
+
+.didascalia { position: absolute; bottom: -26px; left: 0; right: 0; text-align: center; font-family: 'EB Garamond', serif; font-style: italic; font-size: 15px; opacity: .55; margin: 0; }
+
+
+/* un articolo senza foto: al posto della foto la L di Locus su rosso */
+.pg figure.senza { background: var(--rosso); display: grid; place-items: center; }
+.pg figure.senza img { width: 34%; height: auto; object-fit: contain; filter: none; }
+.pg h2 { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.pg .somm { display: -webkit-box; -webkit-line-clamp: 9; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* il bordo del libro: copertina rigida che sporge, spessore delle pagine sui lati */
+.rilegatura { position: absolute; top: -12px; bottom: -14px; right: -34px; left: calc(50% - 7px); border-radius: 2px 7px 7px 2px; z-index: 0;
+  background: radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, .07), transparent 60%), linear-gradient(90deg, #4a0d0b, #6b1411 48%, #3a0908 50%, #6b1411 52%, #4a0d0b);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06), inset 0 0 18px rgba(0, 0, 0, .45), 0 30px 60px rgba(0, 0, 0, .55); }
+.pila { position: absolute; top: 3px; bottom: 1px; z-index: 0;
+  background: repeating-linear-gradient(90deg, #efdcbe 0 1px, #c8b08c 1px 1.6px, #e6d1b0 1.6px 2.4px);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, .35); }
+.pila.sx { right: 100%; width: var(--psx); border-radius: 4px 0 0 4px; }
+.pila.dx { left: 100%; width: var(--pdx); border-radius: 0 4px 4px 0; }
+.base, .foglio { z-index: 1; }
+.base.sx { display: none; }
+/* la copertina: un piatto rigido più grande delle pagine, che aprendosi diventa il piatto di sinistra */
+.foglio.piatto-copertina { top: -12px; height: calc(100% + 26px); width: calc(var(--W) + 34px); }
+.piatto-copertina .faccia { border-radius: 2px 7px 7px 2px; box-shadow: 0 30px 60px rgba(0, 0, 0, .5); }
+.piatto-copertina .faccia.retro { border-radius: 7px 2px 2px 7px; }
+.tavola, .piatto-copertina .faccia.retro { background: radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, .08), transparent 60%), linear-gradient(90deg, #3a0908, #6b1411 6%, #6b1411 94%, #4a0d0b); }
+.tavola { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--crema);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06), inset 0 0 22px rgba(0, 0, 0, .45); }
+.tavola::before { content: ''; position: absolute; inset: 22px 22px 22px 30px; border: 1px solid rgba(245, 228, 203, .28); }
+.tavola img { width: 44%; }
+.t-tit { font-family: 'Anton', sans-serif; text-transform: uppercase; font-size: calc(var(--W) * .2); line-height: 1; margin-top: 6%; }
+.t-sotto { font-size: calc(var(--W) * .026); letter-spacing: .3em; text-transform: uppercase; opacity: .75; margin-top: 3%; }
+.t-motto { position: absolute; bottom: 9%; font-family: 'EB Garamond', serif; font-style: italic; font-size: calc(var(--W) * .036); opacity: .7; }
+.risguardo { position: absolute; top: 12px; bottom: 14px; left: 34px; right: 0; overflow: hidden; }
+.base.sx, .faccia.retro, .base.sx .pg, .faccia.retro .pg { border-radius: 3px 0 0 3px; }
+.base.dx, .faccia.fronte, .base.dx .pg, .faccia.fronte .pg { border-radius: 0 3px 3px 0; }
+.base { overflow: hidden; }
+/* la piega al centro: più profonda, come un libro che non si apre del tutto piatto */
+.pg.dx { background: linear-gradient(90deg, rgba(43, 13, 12, .32), rgba(43, 13, 12, .08) 3%, rgba(43, 13, 12, 0) 9%), var(--carta); }
+.pg.sx { background: linear-gradient(270deg, rgba(43, 13, 12, .32), rgba(43, 13, 12, .08) 3%, rgba(43, 13, 12, 0) 9%), var(--carta); }
+.pg.scura { background: linear-gradient(270deg, rgba(0, 0, 0, .35), rgba(0, 0, 0, 0) 9%), var(--rosso); }
+
+/* l'invito ad aprire */
+.pg .apri { color: var(--rosso); opacity: 1; font-weight: 600; }
+.libro:not(.preso) .base.dx:hover .apri, .libro:not(.preso) .foglio:hover .apri { text-decoration: underline; text-underline-offset: 4px; }
+
+/* il passaggio alla lettura */
+.scena, .testa { transition: opacity .6s, transform .8s cubic-bezier(.2, .8, .2, 1), filter .6s; }
+.legge .scena { opacity: 0; transform: scale(1.08); filter: blur(6px); pointer-events: none; }
+.legge .testa { opacity: 0; pointer-events: none; }
+
+/* la pagina di lettura: fondo carta, testo scuro */
+#lettura { position: fixed; inset: 0; z-index: 40; overflow-y: auto; overscroll-behavior: contain; background: #F5E4CB; color: var(--nero); opacity: 0; visibility: hidden; transform: translateY(30px); transition: opacity .5s, transform .6s, visibility 0s .6s; }
+.legge #lettura { opacity: 1; visibility: visible; transform: none; transition: opacity .6s .25s, transform .8s .25s cubic-bezier(.2, .8, .2, 1), visibility 0s; }
+.l-barra { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: var(--vivo); transform-origin: left; transform: scaleX(0); z-index: 2; }
+.l-testa { position: sticky; top: 0; display: flex; justify-content: space-between; align-items: center; padding: 16px var(--pad); background: var(--nero); color: var(--crema); font-size: 12px; letter-spacing: .22em; text-transform: uppercase; z-index: 1; }
+.l-torna { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; }
+/* l'articolo dentro un filo rosso sottile, staccato dal testo quanto basta per respirare */
+.l-pezzo { width: min(812px, calc(100% - var(--pad) * 2)); margin: 8vh auto 10vh; padding: clamp(24px, 5vw, 56px); border: 1px solid var(--rosso); }
+.l-meta { font-size: 12px; letter-spacing: .24em; text-transform: uppercase; color: var(--rosso); margin: 0; }
+#lettura h1 { font-family: 'Anton', sans-serif; font-weight: 400; text-transform: uppercase; color: var(--rosso); font-size: clamp(40px, 6vw, 78px); line-height: .96; margin: 18px 0 0; }
+.l-somm { font-family: 'EB Garamond', serif; font-style: italic; font-size: clamp(21px, 2.2vw, 26px); line-height: 1.38; margin: 24px 0 0; }
+.l-cop { margin: 40px 0 0; }
+.l-cop img { width: 100%; max-height: 62vh; object-fit: cover; display: block; }
+.l-corpo { font-family: 'EB Garamond', serif; font-size: 20px; line-height: 1.62; margin-top: 40px; }
+.l-corpo p { margin: 0 0 22px; }
+.l-corpo h2 { font-family: 'Anton', sans-serif; font-weight: 400; text-transform: uppercase; font-size: 28px; line-height: 1; margin: 48px 0 18px; }
+.l-corpo { counter-reset: parte; }
+.l-corpo h2::before { counter-increment: parte; content: counter(parte, decimal-leading-zero); color: var(--rosso); margin-right: 12px; }
+.l-corpo > p:first-child::first-letter { font-family: 'Anton', sans-serif; color: var(--rosso); float: left; font-size: 74px; line-height: .8; padding: 8px 10px 0 0; }
+.l-corpo ul { margin: 0 0 22px; padding-left: 22px; }
+.l-corpo a { color: var(--rosso); text-underline-offset: 3px; }
+.l-cop[hidden] { display: none; }
+.l-corpo blockquote { margin: 34px 0; padding-left: 22px; border-left: 3px solid var(--rosso); font-style: italic; font-size: 26px; line-height: 1.3; color: var(--rosso); }
+.l-fonti { font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.5; padding: 18px 18px 18px 38px; border: 1px solid rgba(43, 13, 12, .2); }
+.l-fine { margin-top: 40px; font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: var(--rosso); }
+
+/* telefono: una pagina sola, il sommario diventa una striscia in basso */
+@media (max-width: 760px) {
+  .scena { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; padding: 70px 0 calc(18px + env(safe-area-inset-bottom)); gap: 14px; }
+  .palco { overflow: hidden; }
+  /* il centro della pagina di destra al centro dello schermo */
+  .libro { position: absolute; left: 50%; top: 50%; transform: translate(-75%, -50%); }
+  .libro { --sposta: 0px; }
+  .sommario { order: 2; padding: 0 var(--pad); }
+  .occhiello, .aiuto { display: none; }
+  #voci { display: flex; justify-content: space-between; border-left: 0; border-top: 1px solid rgba(245, 228, 203, .2); padding: 14px 0 0; }
+  #voci li { padding: 0; }
+  #voci .tit { display: none; }
+  .segno { top: -8px; }
+  .didascalia { position: static; display: none; }
+}

@@ -11,23 +11,44 @@
   <meta property="og:title" content="Locus · Diario" />
   <meta property="og:image" content="https://cristianocugini1-rgb.github.io/locus-sito-prototipo/anteprima-social.jpg" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%232b0d0c'/%3E%3Cpath d='M9 6h6v16h9v4H9z' fill='%23d0462e'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="/src/articolo.css" />
   <link rel="stylesheet" href="/src/diario.css" />
 </head>
 <body>
   <header class="testa">
-    <a class="logo" href="chi-siamo.html" aria-label="torna a chi siamo"><img src="/img/logo-locus.jpg" alt="locus" /></a>
-    <a class="torna" href="chi-siamo.html">&larr; chi siamo</a>
+    <a class="logo" href="chi-siamo.html" aria-label="torna a chi siamo"><img src="/img/logo-locus-bianco.png" alt="locus" /></a>
+    <a class="torna-sito" href="chi-siamo.html">&larr; chi siamo</a>
   </header>
-  <main class="diario">
-    <p class="occhiello">Articoli</p>
-    <h1>Diario.</h1>
-    <div class="griglia" id="griglia"><p class="attesa">un momento…</p></div>
+
+  <main class="scena">
+    <nav class="sommario" id="sommario" aria-label="sommario del diario">
+      <p class="occhiello">Sommario</p>
+      <ol id="voci"></ol>
+      <i class="segno" id="segno" aria-hidden="true"></i>
+      <p class="aiuto">trascina il segno rosso per sfogliare</p>
+    </nav>
+    <div class="palco" id="palco">
+      <div class="libro" id="libro"></div>
+      <p class="didascalia" id="didascalia"></p>
+    </div>
   </main>
-  <footer class="piede">
-    <p class="motto">trova il tuo posto, riempi il vuoto</p>
-    <a href="./">torna all'inizio</a>
-  </footer>
+
+  <!-- la pagina di lettura: si apre toccando un articolo del libro -->
+  <article id="lettura" aria-hidden="true">
+    <i class="l-barra" id="l-barra"></i>
+    <header class="l-testa">
+      <button class="l-torna">&larr; torna al diario</button>
+      <span id="l-num"></span>
+    </header>
+    <div class="l-pezzo">
+      <p class="l-meta" id="l-meta"></p>
+      <h1 id="l-tit"></h1>
+      <p class="l-somm" id="l-somm"></p>
+      <figure class="l-cop" id="l-cop"><img id="l-foto" alt="" /></figure>
+      <div class="l-corpo" id="l-corpo"></div>
+      <button class="l-fine">&larr; torna a sfogliare il diario</button>
+    </div>
+  </article>
+
   <script type="module" src="/src/diario.js"></script>
 </body>
 </html>

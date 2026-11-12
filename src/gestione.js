@@ -142,7 +142,7 @@ async function editor(id) {
           <button class="primo" id="salva">Salva</button>
           <button id="pubblica">${a.stato === 'pubblicato' ? 'Ritira dal sito' : 'Pubblica sul sito'}</button>
           ${id ? '<button class="rosso" id="elimina">Elimina</button>' : ''}
-          ${a.stato === 'pubblicato' ? `<a href="articolo.html?a=${encodeURIComponent(a.slug)}" target="_blank">vedi sul sito</a>` : ''}
+          ${a.stato === 'pubblicato' ? `<a href="diario.html?a=${encodeURIComponent(a.slug)}" target="_blank">vedi sul sito</a>` : ''}
         </div>
         <p class="msg" id="e-msg" aria-live="polite"></p>
       </div>
