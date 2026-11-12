@@ -43,8 +43,13 @@ main, .foot { position: relative; z-index: 2; }
 .nav.solid::before { opacity: 1; }
 .nav.solid { padding-top: 14px; padding-bottom: 14px; }
 html.menu-open, body.menu-open { overflow: hidden; overscroll-behavior: none; }
-.logo { margin-right: auto; display: block; height: 34px; }
-.logo img { height: 100%; width: auto; mix-blend-mode: screen; object-fit: contain; }
+.logo {
+  margin-right: auto; display: block; height: 40px; padding: 6px 10px; box-sizing: border-box;
+  background: var(--rosso-vivo); /* dal 12/11 la scritta Locus sta su fondo rosso */
+  /* è anche la porta del gestionale (pressione lunga): sul telefono niente menu, selezione o anteprima */
+  -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation;
+}
+.logo img { height: 100%; width: auto; mix-blend-mode: screen; object-fit: contain; pointer-events: none; -webkit-user-drag: none; }
 #menu { display: flex; gap: 26px; }
 #menu a {
   text-decoration: none; font-size: 12px; letter-spacing: .2em; text-transform: uppercase;

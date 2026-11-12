@@ -4,6 +4,7 @@ import { FORMATI } from './formati.js';
 import { storia } from './storia.js';
 import { leggi, inserisci, segnala, indirizzoCopertina } from './dati.js';
 import { dataItaliana } from './testo.js';
+import { apriPortaSegreta, PORTA_ATTESA } from './porta-segreta.js';
 segnala('chi-siamo', 'arrivo');
 
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
@@ -274,9 +275,30 @@ if (location.hash) {
 }
 
 
+/* porta segreta: tenendo premuta la scritta Locus in alto a sinistra per 4 secondi si entra nel gestionale.
+   Funziona con il dito e con il mouse; se il dito scorre o si stacca prima, resta il normale ritorno all'inizio. */
+const porta = { timer: 0, x: 0, y: 0, usata: false };
+const logo = $('.nav .logo');
+function chiudiPorta() { clearTimeout(porta.timer); porta.timer = 0; }
+logo.addEventListener('pointerdown', (e) => {
+  if (e.button > 0) return;
+  porta.usata = false;
+  porta.x = e.clientX; porta.y = e.clientY;
+  chiudiPorta();
+  porta.timer = setTimeout(() => { porta.timer = 0; porta.usata = true; lenis.stop(); apriPortaSegreta(); }, PORTA_ATTESA);
+});
+logo.addEventListener('pointermove', (e) => {
+  if (porta.timer && Math.hypot(e.clientX - porta.x, e.clientY - porta.y) > 14) chiudiPorta();
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => logo.addEventListener(ev, chiudiPorta));
+// sul telefono la pressione lunga aprirebbe il menu del link: lo fermo sul logo
+logo.addEventListener('contextmenu', (e) => e.preventDefault());
+logo.addEventListener('dragstart', (e) => e.preventDefault());
+
 $$('[data-dissolve]').forEach((a) => {
   a.addEventListener('click', (e) => {
     e.preventDefault();
+    if (porta.usata && a === logo) return; // la pressione lunga non fa anche tornare all'inizio
     veil.classList.add('leave', 'on');
     lenis.stop();
     setTimeout(() => { location.href = a.href; }, 1700);

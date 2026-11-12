@@ -385,7 +385,6 @@ async function statistiche() {
   const arrivi = conta((v) => v.pagina === 'home' && v.evento === 'arrivo');
   const voci = [
     [arrivi, 'visite alla pagina iniziale'],
-    [conta((v) => v.evento === 'guida'), 'hanno toccato la bolla (visita guidata)'],
     [conta((v) => v.evento === 'salta'), 'hanno saltato l\'introduzione'],
     [conta((v) => v.evento === 'fine-percorso'), 'sono arrivati in fondo al viaggio'],
     [conta((v) => v.pagina === 'chi-siamo' && v.evento === 'arrivo'), 'visite a Chi siamo'],

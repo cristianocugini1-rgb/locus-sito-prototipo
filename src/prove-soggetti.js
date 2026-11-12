@@ -127,7 +127,68 @@ function ponte() {
   }
   return parti;
 }
+function battistero(N) {
+  const R = 2.4, y0 = -3.3, lv = [-3.3, -1.7, -0.7, 0.3, 1.3, 2.4];
+  const ang = (k) => k * Math.PI / 4 + Math.PI / 8;
+  const vtx = (k, r) => new THREE.Vector2(Math.cos(ang(k)) * r, Math.sin(ang(k)) * r);
+  const side = (k, t, r) => vtx(k, r).lerp(vtx(k + 1, r), t);
+  const nSide = (k) => V(Math.cos(ang(k) + Math.PI / 8), 0, Math.sin(ang(k) + Math.PI / 8));
+  const parti = [['base', 23], ['logge', 56], ['cornici', 16], ['pilastri', 10], ['tetto', 8], ['lanterna', 2], ['portali', 3]];
+  const tot = parti.reduce((q, [, w]) => q + w, 0);
+  const scegli = () => { let r = Math.random() * tot; for (const [n, w] of parti) { if ((r -= w) < 0) return n; } return 'base'; };
+  const portale = (k, t, y) => k % 2 === 0 && k < 6 && Math.abs(t - 0.5) < 0.16 && y < -2.05 + 0.22 * Math.sqrt(Math.max(0, 1 - ((t - 0.5) / 0.16) ** 2));
+  const out = [];
+  while (out.length < N) {
+    const k = Math.floor(Math.random() * 8), t = Math.random();
+    let v, y, n = nSide(k);
+    const parte = scegli();
+    if (parte === 'base') {
+      y = lerp(y0, lv[1], Math.random());
+      if (portale(k, t, y)) continue;
+      v = side(k, t, R);
+    } else if (parte === 'portali') {
+      y = lerp(y0, -1.85, Math.random());
+      const tt = 0.5 + (Math.random() - 0.5) * 0.3;
+      if (!portale(k, tt, y)) continue;
+      v = side(k, tt, R * 0.86);
+    } else if (parte === 'logge') {
+      const b = 1 + Math.floor(Math.random() * 4);
+      y = lerp(lv[b] + 0.08, lv[b + 1] - 0.06, Math.random());
+      if (Math.random() < 0.55) v = side(k, t, R * 0.88);
+      else {
+        const j = Math.floor(Math.random() * 5);
+        const c = side(k, (j + 0.5) / 5, R * 0.99), a = Math.random() * Math.PI * 2;
+        v = new THREE.Vector2(c.x + Math.cos(a) * 0.05, c.y + Math.sin(a) * 0.05);
+        n = V(Math.cos(a), 0, Math.sin(a));
+      }
+    } else if (parte === 'cornici') {
+      const l = lv[Math.floor(Math.random() * lv.length)];
+      if (Math.random() < 0.6) { y = l + (Math.random() - 0.5) * 0.12; v = side(k, t, R * 1.06); }
+      else { y = l + 0.06; v = side(k, t, lerp(R * 0.97, R * 1.06, Math.random())); n = V(0, 1, 0); }
+    } else if (parte === 'pilastri') {
+      y = lerp(y0, 3.25, Math.random());
+      const c = vtx(k, R * 1.05), tg = new THREE.Vector2(-Math.sin(ang(k)), Math.cos(ang(k)));
+      v = c.addScaledVector(tg, (Math.random() - 0.5) * 0.22);
+      n = V(Math.cos(ang(k)), 0, Math.sin(ang(k)));
+    } else if (parte === 'tetto') {
+      const q = Math.random();
+      y = lerp(2.45, 3.0, q);
+      v = side(k, t, lerp(R * 1.02, 0.7, q));
+      n = nSide(k).multiplyScalar(0.5).add(V(0, 0.87, 0));
+    } else {
+      y = lerp(3.0, 3.45, Math.random());
+      v = side(k, t, 0.45);
+    }
+    out.push({ p: V(v.x, y, v.y), n: n.normalize() });
+  }
+  return out;
+}
+
 const SOGGETTI = {
+  battistero: {
+    nome: 'Battistero', punti: battistero, area: 120,
+    nota: 'Il Battistero del sito, la stessa forma (logge, colonnine, portali, tetto), coperto di tessere invece che di palline.',
+  },
   sedia: { nome: 'sedia vuota', parti: () => sedia(0.35, V(0, -0.1, 0)), nota: 'Una sedia vuota che si riempie: chiude "Riempi il vuoto" e "trova il tuo posto" con un oggetto solo.' },
   cerchio: {
     nome: 'cerchio di sedie',
@@ -147,10 +208,13 @@ const SOGGETTI = {
 /* i tre materiali */
 const MATERIALI = {
   mosaico: { nome: 'tessere di mosaico', nota: 'Tessere in smalto rosso, lo stesso della L e dei cerchi.' },
+  marmo: { nome: 'tessere di marmo rosa', nota: 'Tessere di marmo rosa di Verona, il colore vero del Battistero, opache e appena lucide.' },
   carta: { nome: 'coriandoli di carta', nota: 'Foglietti di carta rossa opaca, come i cigni e le pagine. Arrivando girano su se stessi.' },
   bolle: { nome: 'microbolle', nota: 'Bolle trasparenti senza colori, filo bianco sul bordo, come la bolla della L.' },
 };
 const ROSSI_SMALTO = ['#8a0603', '#9c0c06', '#73040a', '#a8180e'].map((c) => new THREE.Color(c));
+// il marmo rosa di Verona del Battistero vero, gli stessi tre toni delle palline del sito
+const MARMO_ROSA = ['#e8c4b2', '#e8c4b2', '#d9a594', '#f3dccd'].map((c) => new THREE.Color(c));
 const ROSSI_CARTA = ['#b3160d', '#9a0f08', '#c8301f', '#7e0a06', '#d9a594'].map((c) => new THREE.Color(c));
 const matBolla = new THREE.ShaderMaterial({
   uniforms: { uEnv: { value: cubo.texture } },
@@ -176,17 +240,21 @@ const matBolla = new THREE.ShaderMaterial({
 });
 
 /* costruzione */
-let mesh = null, dati = null, soggetto = 'sedia', materiale = 'mosaico', N = 8000, form = 0;
+let mesh = null, dati = null, soggetto = 'battistero', materiale = 'mosaico', N = 8000, form = 0;
 const tmpQ = new THREE.Quaternion(), tmpM = new THREE.Matrix4(), tmpS = new THREE.Vector3(), tmpP = new THREE.Vector3(), Z = V(0, 0, 1);
 function costruisci() {
   if (mesh) { scene.remove(mesh); mesh.geometry.dispose(); if (mesh.material !== matBolla) mesh.material.dispose(); }
-  const parti = SOGGETTI[soggetto].parti();
-  const area = parti.reduce((s, x) => s + x.area, 0);
+  const S = SOGGETTI[soggetto];
+  const parti = S.punti ? [] : S.parti();
+  const area = S.punti ? S.area : parti.reduce((q, x) => q + x.area, 0);
+  const pronti = S.punti ? S.punti(N) : null;
   const lato = Math.sqrt(area / N); // misura di un pezzo perché la superficie resti coperta
   let geo, mat;
-  if (materiale === 'mosaico') {
+  if (materiale === 'mosaico' || materiale === 'marmo') {
     geo = new THREE.BoxGeometry(lato * 0.9, lato * 0.9, lato * 0.32);
-    mat = new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 1.4 });
+    mat = materiale === 'marmo'
+      ? new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: 0.42, clearcoat: 0.35, clearcoatRoughness: 0.2, envMapIntensity: 0.9 })
+      : new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 1.4 });
   } else if (materiale === 'carta') {
     geo = new THREE.PlaneGeometry(lato * 1.15, lato * 1.15);
     mat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 1, metalness: 0, side: THREE.DoubleSide, envMapIntensity: 0.25 });
@@ -201,16 +269,14 @@ function costruisci() {
   for (const x of parti) { acc += x.area; cum.push(acc); }
   dati = [];
   for (let i = 0; i < N; i++) {
-    const r = Math.random() * acc;
-    const parte = parti[cum.findIndex((c) => c >= r)];
-    const { p, n } = parte.punto();
+    const { p, n } = pronti ? pronti[i] : parti[cum.findIndex((c) => c >= Math.random() * acc)].punto();
     const qFin = new THREE.Quaternion().setFromUnitVectors(Z, n.normalize());
     qFin.multiply(new THREE.Quaternion().setFromAxisAngle(Z, materiale === 'carta' ? Math.random() * Math.PI * 2 : (Math.random() - 0.5) * 0.12));
     dati.push({
       p, qFin, nuvola: new THREE.Vector3().randomDirection().multiplyScalar(4 + Math.random() * 4),
       seme: Math.random(), asse: new THREE.Vector3().randomDirection(), giri: 2 + Math.random() * 4,
     });
-    const pal = materiale === 'carta' ? ROSSI_CARTA : ROSSI_SMALTO;
+    const pal = materiale === 'carta' ? ROSSI_CARTA : materiale === 'marmo' ? MARMO_ROSA : ROSSI_SMALTO;
     if (materiale !== 'bolle') mesh.setColorAt(i, pal[Math.floor(Math.random() * pal.length)]);
   }
   scene.add(mesh);

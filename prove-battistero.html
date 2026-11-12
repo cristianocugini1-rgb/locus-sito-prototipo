@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prove: il Battistero a mosaico</title>
+  <style>
+    @import "/src/fonts/caratteri.css";
+    html, body { margin: 0; height: 100%; background: #2b0d0c; color: #F5E4CB; font-family: 'Inter', sans-serif; overflow: hidden; }
+    canvas { display: block; }
+    .pannello { position: fixed; left: 24px; top: 22px; display: grid; gap: 14px; max-width: 340px; }
+    h1 { font-family: 'EB Garamond', serif; font-weight: 500; font-size: 26px; margin: 0; }
+    .riga { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .riga b { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; opacity: .55; width: 100%; font-weight: 600; }
+    button { background: none; color: #F5E4CB; border: 1px solid rgba(245,228,203,.3); padding: 8px 14px; font: 13px 'Inter', sans-serif; cursor: pointer; }
+    button.su { background: #F5E4CB; color: #2b0d0c; }
+    .nota { font-family: 'EB Garamond', serif; font-style: italic; font-size: 16px; opacity: .75; margin: 0; line-height: 1.35; }
+  </style>
+</head>
+<body>
+  <div class="pannello">
+    <h1>Il Battistero a mosaico</h1>
+    <div class="riga" id="materiali"><b>tessere</b></div>
+    <div class="riga"><b>prove</b><button id="ricomponi">ricomponi</button><button id="gira" class="su">gira da solo</button><button id="anima" class="su">anima scura</button><button id="ombre" class="su">ombre</button></div>
+    <p class="nota" id="nota">Modello fatto in Blender (blender/battistero.py). Trascina per girarlo, rotella per avvicinarti.</p>
+  </div>
+  <script type="module" src="/src/prove-battistero.js"></script>
+</body>
+</html>
