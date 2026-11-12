@@ -307,15 +307,21 @@ figcaption { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1
 #sheet.open .sheet-scroll { clip-path: inset(0 0 0 0 round 0); }
 .sheet-body { transition: transform .3s var(--ease); }
 .sheet-x {
-  position: fixed; top: calc(18px + env(safe-area-inset-top)); right: var(--pad); z-index: 3; width: 48px; height: 48px; border-radius: 50%;
-  border: 1px solid rgba(245, 228, 203, .35); background: rgba(20, 4, 4, .5); backdrop-filter: blur(8px);
-  opacity: 0; transform: rotate(-90deg) scale(.6); transition: opacity .6s .5s, transform .9s .5s var(--ease), background .4s;
+  /* dal 12/11: freccia per tornare indietro, più grande, a metà schermo sulla sinistra (prima una X piccola in alto a destra) */
+  position: fixed; top: 50%; margin-top: -32px; left: 18px; z-index: 3; width: 64px; height: 64px; border-radius: 50%;
+  border: 1px solid rgba(245, 228, 203, .45); background: rgba(20, 4, 4, .55); backdrop-filter: blur(8px);
+  opacity: 0; transform: translateX(-24px) scale(.8); transition: opacity .6s .5s, transform .9s .5s var(--ease), background .4s;
 }
+@media (max-width: 560px) { .sheet-x { width: 54px; height: 54px; margin-top: -27px; left: 8px; } }
 #sheet.open .sheet-x { opacity: 1; transform: none; }
 .sheet-x:hover { background: var(--crema); }
-.sheet-x span { position: absolute; left: 14px; right: 14px; top: 50%; height: 1.5px; background: var(--crema); transform: rotate(45deg); transition: background .4s; }
-.sheet-x span + span { transform: rotate(-45deg); }
+.sheet-x span { position: absolute; left: 30%; right: 28%; top: 50%; height: 1.5px; margin-top: -.75px; background: var(--crema); transition: background .4s, border-color .4s; }
+.sheet-x span + span {
+  left: 31%; right: auto; width: 26%; height: auto; aspect-ratio: 1; margin-top: 0; background: none;
+  border-left: 1.5px solid var(--crema); border-bottom: 1.5px solid var(--crema); transform: translateY(-50%) rotate(45deg);
+}
 .sheet-x:hover span { background: var(--nero); }
+.sheet-x:hover span + span { background: none; border-color: var(--nero); }
 .sh-hero { position: relative; min-height: 92vh; min-height: 92svh; display: flex; align-items: flex-end; padding: 0 var(--pad) 9vh; overflow: hidden; }
 .sh-cover { position: absolute; inset: 0; z-index: 0; }
 .sh-cover img { transform: translateY(calc(var(--sy, 0) * .35px)) scale(1.15); opacity: .55; filter: saturate(.85); transition: opacity 1.4s; }

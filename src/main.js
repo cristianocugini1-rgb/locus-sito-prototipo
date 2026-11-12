@@ -6,6 +6,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import Lenis from 'lenis';
 import { storia, daStoria } from './storia.js';
 import { creaMondi } from './mondi.js';
@@ -30,6 +31,9 @@ const LEGGERO = Q.has('leggero') || (!Q.has('pieno') && (isTouch ? (cores <= 6 |
 // chi ha chiesto al sistema meno movimento: niente rollio, niente sfocatura, movimenti più calmi
 const MENO_MOTO = matchMedia('(prefers-reduced-motion: reduce)').matches || Q.has('calmo');
 const smallQ = small || LEGGERO;
+// versione 2 (12/11, in prova, solo in locale): ?versione=2. All'apertura c'è solo la bolla, la L compare quando
+// la bolla scoppia; al posto dei tre cerchi ci sono le parentesi del logo, i quattro angoli del mirino attorno a locus
+const V2 = Q.get('versione') === '2';
 
 const COL = {
   rosso: new THREE.Color('#800200'),
@@ -45,7 +49,12 @@ const COL = {
 /* ------------------------------------------------------------------ */
 const canvas = document.getElementById('gl');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, LEGGERO ? 1.5 : 2));
+// tetto di pixel disegnati (12/11 sera): sugli schermi larghi (es. 2752x1152 a 125%, 5 milioni di pixel) una scheda
+// video integrata non ce la fa con bagliore e antialiasing; si disegna al massimo ~2,4 milioni di pixel e si allarga.
+// ?pixel=5000000 per provare altri tetti
+const PIXEL_MAX = Number(Q.get('pixel')) || (LEGGERO ? 1.4e6 : 2.4e6);
+const PR_TETTO = Math.sqrt(PIXEL_MAX / (innerWidth * innerHeight));
+renderer.setPixelRatio(Math.min(devicePixelRatio, LEGGERO ? 1.5 : 2, Math.max(0.75, PR_TETTO)));
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.NeutralToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -672,7 +681,20 @@ RINGS.forEach((r, i) => {
   // mentre lo smalto attorno si schiarisce come illuminato da vicino
   const filMat = new THREE.MeshBasicMaterial({ color: LUCE_INTERNA.clone(), transparent: true });
   const filamento = new THREE.Mesh(new THREE.TorusGeometry(R_RING - 0.405, 0.016, 12, 480), filMat);
-  if (TUBI && LUCE_PURA) {
+  if (V2) {
+    // le parentesi del logo: quattro angoli nello stesso smalto della L; dal 12/11 il lato lungo è in verticale
+    const HW = 3.7, HH = 5.6, BR = 2.3, SP = 0.62;
+    const cornice = new THREE.Group();
+    [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(([sx, sy]) => {
+      const h = new THREE.Mesh(new RoundedBoxGeometry(BR, SP, SP, 4, 0.12), tubeMat);
+      const v = new THREE.Mesh(new RoundedBoxGeometry(SP, BR, SP, 4, 0.12), tubeMat);
+      h.position.set(sx * (HW - BR / 2 + SP / 2), sy * HH, 0);
+      v.position.set(sx * HW, sy * (HH - BR / 2 + SP / 2), 0);
+      cornice.add(h, v);
+    });
+    g.add(cornice);
+  }
+  else if (TUBI && LUCE_PURA) {
     // la luce si stende nel piano del cerchio: il tubo le sta davanti e la copre, così sullo smalto non resta nessun velo rosa
     haze.scale.z = beam.scale.z = 0.04;
     // un po' più di luce (11/11): fascio e alone +40%, anima +30%
@@ -704,7 +726,7 @@ RINGS.forEach((r, i) => {
         gl_FragColor = vec4(vec3(1.0, 0.97, 0.94) * luce, 1.0);
       }`,
   }));
-  if (VELO) g.add(velo);
+  if (VELO && !V2) g.add(velo);
   const ND = small ? 350 : 700;
   const vdPos = new Float32Array(ND * 3), vdVel = new Float32Array(ND * 3);
   const vdGeo = new THREE.BufferGeometry();
@@ -712,7 +734,7 @@ RINGS.forEach((r, i) => {
   const vdMat = new THREE.PointsMaterial({ size: 0.06, map: DOT, color: '#ffffff', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
   const drops = new THREE.Points(vdGeo, vdMat);
   drops.frustumCulled = false;
-  if (VELO) g.add(drops);
+  if (VELO && !V2) g.add(drops);
 
   // riempi il vuoto: il centro del cerchio si riempie di smalto rosso liquido mentre ti avvicini
   const discoUni = { uFill: { value: 0 }, uTime: { value: 0 }, uCol: { value: LIQUIDO } };
@@ -735,7 +757,7 @@ RINGS.forEach((r, i) => {
   }));
   if (RIEMPI) g.add(disco);
 
-  g.rotation.z = i * 0.7;
+  g.rotation.z = V2 ? 0 : i * 0.7;
   scene.add(g);
   Object.assign(r, { group: g, core, beam, haze, edgeBeam, ticks, grains, metalMat, tubeMat, flash: 0,
     veloUni, vdPos, vdVel, vdGeo, vdMat, ND, rotto: false, popT: 1, dropT: 1, disco, discoUni, passato: false, uInner, innerGlow, filMat });
@@ -967,13 +989,16 @@ function battisteroSolido(N) {
   return { pos, nor };
 }
 // stelle del Battistero di luce: dall'11/11 sera il doppio (prima 18.000), ?stelle=50000 per provare altri numeri
-const STELLE_BASE = LEGGERO ? 12000 : small ? 20000 : 36000;
+// dal 12/11 sera meno della metà: con 61.200 pallini il sito andava a scatti (?stelle=61200 per rivedere i pieni)
+const STELLE_BASE = LEGGERO ? 7000 : small ? 11000 : 20000;
 // dal 12/11 le stelle diventano pallini rossi di Locus (tondi netti, non aloni di luce); ?grani=luce riporta le stelle
 const PALLINI_ROSSI = !BATT_SOLIDO && Q.get('grani') !== 'luce';
 // con i pallini rossi il 70% di punti in più, così le linee spesse restano piene
-const STELLE = Number(Q.get('stelle')) || Math.round(STELLE_BASE * (PALLINI_ROSSI ? 1.7 : 1));
+const STELLE = Number(Q.get('stelle')) || Math.round(STELLE_BASE * (PALLINI_ROSSI ? 1.2 : 1));
 // rosso spento, come mattone o smalto invecchiato (12/11; prima '#d0180c', '#a80a05', '#e8402a')
-const ROSSI_LOCUS = ['#a8473c', '#8c3a31', '#bf6457'].map((h) => new THREE.Color(h));
+// dal 12/11 pomeriggio rosso profondo e lucido, come lacca o granato; ?rosso=prima riporta il mattone di stamattina
+const ROSSO_PRIMA = Q.get('rosso') === 'prima';
+const ROSSI_LOCUS = (ROSSO_PRIMA ? ['#a8473c', '#8c3a31', '#bf6457'] : ['#8a1712', '#6a0e0b', '#a3241a']).map((h) => new THREE.Color(h));
 const BN = BATT_SOLIDO ? (LEGGERO ? 14000 : small ? 26000 : 60000) : STELLE;
 const bGeo = new THREE.BufferGeometry();
 const bSolido = BATT_SOLIDO ? battisteroSolido(BN) : null;
@@ -1061,7 +1086,7 @@ const batt = new THREE.Points(bGeo, BATT_SOLIDO ? battSolidoMat : new THREE.Shad
   depthWrite: false,
   // i pallini rossi coprono il fondo come gocce di smalto; le stelle di luce si sommavano
   blending: PALLINI_ROSSI ? THREE.NormalBlending : THREE.AdditiveBlending,
-  defines: PALLINI_ROSSI ? { PALLINI: 1 } : {},
+  defines: PALLINI_ROSSI ? (ROSSO_PRIMA ? { PALLINI: 1, ROSSO_PRIMA: 1 } : { PALLINI: 1 }) : {},
   vertexShader: /* glsl */ `
     attribute vec3 aRandom; attribute float aSeed; attribute vec3 aColor;
     uniform float uTime, uForm, uBurst, uPixel;
@@ -1092,8 +1117,22 @@ const batt = new THREE.Points(bGeo, BATT_SOLIDO ? battSolidoMat : new THREE.Shad
     #ifdef PALLINI
       // pallino pieno con il bordo appena morbido e un punto di luce in alto a sinistra, come lo smalto della L
       float a = smoothstep(0.5, 0.42, r);
+     #ifdef ROSSO_PRIMA
       float lucido = smoothstep(0.22, 0.0, length(gl_PointCoord - vec2(0.36, 0.34)));
       vec3 c = mix(vColor, uHeat, vHeat * 0.5) + vec3(1.0, 0.8, 0.72) * lucido * 0.18;
+     #else
+      // lacca e non plastica: il pallino ha volume (bordo più scuro), dentro tiene un riflesso rosso che sale dal basso
+      // come in una pietra, e il punto di luce è piccolo, netto, caldo e diverso da un pallino all'altro
+      vec2 q = (gl_PointCoord - 0.5) * 2.0;
+      vec3 n = vec3(q.x, -q.y, sqrt(max(0.0, 1.0 - dot(q, q))));
+      vec3 luce = normalize(vec3(-0.45, 0.55, 0.7));
+      float diff = 0.55 + 0.45 * max(dot(n, luce), 0.0);
+      float spec = pow(max(dot(reflect(-luce, n), vec3(0.0, 0.0, 1.0)), 0.0), 38.0);
+      float dentro = smoothstep(0.1, -0.85, n.y) * (1.0 - n.z) * 0.6;
+      vec3 base = mix(vColor, uHeat, vHeat * 0.5);
+      vec3 c = base * diff + vColor * vec3(1.6, 0.55, 0.45) * dentro;
+      c += vec3(1.0, 0.86, 0.78) * spec * (0.25 + 0.55 * vA);
+     #endif
       gl_FragColor = vec4(c, a * uOpacity);
     #else
       float a = smoothstep(0.5, 0.0, r);
@@ -1215,11 +1254,58 @@ $('enter').addEventListener('click', () => apri());
     if (pronto) return;
     pronto = true;
     barra.firstElementChild.style.transform = 'scaleX(1)';
-    setTimeout(() => { barra.classList.add('pronta'); entra.disabled = false; }, 450);
+    // dal 12/11 sera: prima di "entra" si preparano tutti i programmi di disegno e si caricano tutte le immagini
+    // nella scheda video; prima lo faceva la prima volta che ogni cosa compariva, e il sito scattava
+    const t0 = performance.now();
+    scaldaScheda().then(() => {
+      primoDisegno();
+      if (MISURA) annota(`preparazione: ${Math.round(performance.now() - t0)} ms`);
+      setTimeout(() => { barra.classList.add('pronta'); entra.disabled = false; }, 450);
+    });
   };
   THREE.DefaultLoadingManager.onProgress = (_, fatti, totali) => { barra.firstElementChild.style.transform = `scaleX(${(fatti / totali).toFixed(3)})`; };
   THREE.DefaultLoadingManager.onLoad = fine;
   setTimeout(fine, 9000);
+}
+function scaldaScheda() {
+  // compile guarda solo le cose visibili: per un istante si accende tutto, poi si rimette com'era
+  const spenti = [];
+  scene.traverse((o) => { if (!o.visible) { spenti.push(o); o.visible = true; } });
+  const giri = [renderer.compileAsync(scene, camera)];
+  // i materiali dei mondi passano da trasparenti a pieni a dissolvenza finita (mondi.js, opaco): per la scheda
+  // video sono due programmi diversi, e il secondo si preparava a metà percorso con un blocco di un quarto di secondo
+  const vetri = new Set();
+  scene.traverse((o) => {
+    for (const m of [].concat(o.material || [])) if (m.transparent && m.isMeshStandardMaterial) vetri.add(m);
+  });
+  vetri.forEach((m) => { m.transparent = false; m.needsUpdate = true; });
+  giri.push(renderer.compileAsync(scene, camera));
+  vetri.forEach((m) => { m.transparent = true; m.needsUpdate = true; });
+  const fatto = Promise.all(giri).catch(() => {});
+  spenti.forEach((o) => { o.visible = false; });
+  const viste = new Set();
+  const carica = (v) => { if (v && v.isTexture && !viste.has(v)) { viste.add(v); renderer.initTexture(v); } };
+  scene.traverse((o) => {
+    for (const m of [].concat(o.material || [])) {
+      for (const k in m) carica(m[k]);
+      if (m.uniforms) for (const u of Object.values(m.uniforms)) carica(u.value);
+    }
+  });
+  return fatto;
+}
+// un disegno di prova di tutta la scena, fuori dallo schermo, con ogni oggetto acceso: così le forme dei mondi
+// (fili, fogli, cigni) sono già copiate nella scheda video quando compaiono, invece di bloccare l'immagine in quel momento
+function primoDisegno() {
+  const cambiati = [];
+  scene.traverse((o) => {
+    cambiati.push([o, o.visible, o.frustumCulled]);
+    o.visible = true; o.frustumCulled = false;
+  });
+  const prima = renderer.getRenderTarget();
+  renderer.setRenderTarget(composer.readBuffer); // lo stesso foglio su cui disegna il sito: il fotogramma dopo lo ricopre
+  renderer.render(scene, camera);
+  renderer.setRenderTarget(prima);
+  cambiati.forEach(([o, v, f]) => { o.visible = v; o.frustumCulled = f; });
 }
 function apri() {
   gate.classList.add('out');
@@ -1270,6 +1356,7 @@ addEventListener('click', (e) => {
   ray.setFromCamera(mouse, camera);
   if (hero.visible && !popped && ray.intersectObject(bubble).length) {
     pop();
+    if (V2) return;
     lenis.scrollTo(innerHeight * 1.2, { duration: 3.2, easing: (t) => 1 - Math.pow(1 - t, 3) });
     return;
   }
@@ -1345,9 +1432,11 @@ const clock = new THREE.Clock();
 
 // qualità adattiva: se il computer fatica, si abbassa la risoluzione; se c'è margine, si rialza
 const PR_MAX = renderer.getPixelRatio();
-const PR_MIN = Math.min(PR_MAX, LEGGERO ? 1 : 1.25); // sotto, sui telefoni l'immagine si sgrana
+// sui telefoni sotto 1,25 l'immagine si sgrana; sui computer si può scendere fino a 0,75 (lo schermo è grande e il bagliore ammorbidisce)
+const PR_MIN = Math.min(PR_MAX, isTouch ? (LEGGERO ? 1 : 1.25) : 0.75);
 let pr = PR_MAX, qAcc = 0, qFrames = 0, qGood = 0;
 function setPR(v) {
+  if (MISURA) annota(`risoluzione ${pr.toFixed(2)} → ${v.toFixed(2)}`);
   pr = v;
   renderer.setPixelRatio(pr);
   composer.setPixelRatio(pr);
@@ -1355,18 +1444,50 @@ function setPR(v) {
   bUni.uPixel.value = pr;
 }
 const FIXED_Q = new URLSearchParams(location.search).has('fisso');
+// dal 12/11 sera il computer ricorda la risoluzione che regge: alla visita dopo si parte già da lì,
+// senza i cali a metà percorso (ogni cambio di risoluzione blocca l'immagine per un istante). ?azzera la dimentica
+const PR_CHIAVE = 'locus-risoluzione';
 function adaptQuality(dt) {
-  if (document.hidden || FIXED_Q) return;
+  if (document.hidden || FIXED_Q || !document.hasFocus()) return;
   qAcc += dt; qFrames++;
   if (qAcc < 1) return;
   const fps = qFrames / qAcc;
   qAcc = 0; qFrames = 0;
-  if (fps < 40 && pr > PR_MIN) { setPR(Math.max(PR_MIN, pr - 0.25)); qGood = 0; }
-  else if (fps > 57 && pr < PR_MAX && ++qGood >= 3) { setPR(Math.min(PR_MAX, pr + 0.25)); qGood = 0; }
+  if (fps < 40 && pr > PR_MIN) {
+    setPR(Math.max(PR_MIN, pr - 0.25)); qGood = 0;
+    try { localStorage.setItem(PR_CHIAVE, String(pr)); } catch (_) { /* niente */ }
+  }
+  // dal 12/11 sera la risoluzione scende e non risale: l'altalena giù/su bloccava l'immagine a ogni cambio
 }
 let prevCamZ = 9, vel = 0, hot = false, scossa = 0;
 
+// dal 12/11 sera: se la finestra del sito non è quella in uso (si lavora in un altro programma), si disegnano
+// 10 fotogrammi al secondo invece di 60, così il sito non occupa la scheda video al posto degli altri programmi
+let ultimoDisegno = 0;
+// ?misura: in alto a destra fotogrammi al secondo, punto del percorso e risoluzione, per capire quale tratto pesa
+const MISURA = Q.has('misura') ? Object.assign(document.body.appendChild(document.createElement('div')), {
+  style: 'position:fixed;top:8px;right:8px;z-index:9999;font:12px monospace;color:#fff;background:#0009;padding:4px 8px;pointer-events:none;white-space:pre',
+}) : null;
+let mAcc = 0, mN = 0;
+// sotto la riga dei fotogrammi, le ultime 12 annotazioni (blocchi e preparazione), senza aprire la console
+const note = [];
+let pOra = 0;
+function annota(t) { t += ` · percorso ${pOra.toFixed(2)}`; console.log('[misura] ' + t); note.push(t); if (note.length > 12) note.shift(); }
+// (qui e non sopra: setPR scrive nel riquadro di ?misura, che deve già esistere)
+try {
+  if (Q.has('azzera')) localStorage.removeItem(PR_CHIAVE);
+  const ricordata = Number(localStorage.getItem(PR_CHIAVE));
+  if (!FIXED_Q && ricordata && ricordata < pr) setPR(Math.max(PR_MIN, ricordata));
+} catch (_) { /* memoria del browser non disponibile */ }
+// con ?misura, nella console del browser ogni blocco sopra i 50 ms, con il punto in cui è successo
+if (MISURA && 'PerformanceObserver' in window) {
+  try {
+    new PerformanceObserver((l) => l.getEntries().forEach((x) => annota(`blocco ${Math.round(x.duration)} ms a ${(x.startTime / 1000).toFixed(1)} s`))).observe({ type: 'longtask', buffered: true });
+  } catch (_) { /* il browser non li registra */ }
+}
 function frame(time) {
+  if (!document.hasFocus() && time - ultimoDisegno < 95) { requestAnimationFrame(frame); return; }
+  ultimoDisegno = time;
   if (import.meta.env.DEV) { window.__frames = (window.__frames || 0) + 1; }
   lenis.raf(time);
   const dt = Math.min(clock.getDelta(), 0.05);
@@ -1405,7 +1526,7 @@ function frame(time) {
 
   /* 1. bolla e L */
   hero.visible = cz > -9;
-  const leave = ease(seg(p, 0.07, 0.2));
+  const leave = V2 ? ease(seg(p, 0.09, 0.21)) : ease(seg(p, 0.07, 0.2));
   hero.position.set(leave * -1.5, leave * 6.5, -leave * 4);
   hero.rotation.z = leave * 0.5;
   if (hero.visible) {
@@ -1438,6 +1559,14 @@ function frame(time) {
     lMesh.rotation.y = lerp(lMesh.rotation.y, mouseS.x * 0.6 + Math.sin(t * 0.4) * 0.15, 0.08);
     lMesh.rotation.x = lerp(lMesh.rotation.x, -mouseS.y * 0.4, 0.08);
     lMesh.position.y = Math.sin(t * 0.8) * 0.08;
+    if (V2) {
+      // la L nasce dallo scoppio: cresce da zero con un mezzo giro, un filo oltre la misura e poi si assesta
+      const k = clamp((popT - 0.15) / 0.85);
+      const nasce = k <= 0 ? 0 : 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2);
+      lMesh.scale.setScalar(Math.max(nasce, 0.0001));
+      lMesh.rotation.z = (1 - k) * (1 - k) * Math.PI * 0.5;
+      brackets.scale.setScalar(Math.max(nasce, 0.0001));
+    }
     const spread = 1 + wobbleHot * 0.12 + ease(popT) * 0.25;
     corners.forEach((c) => {
       c.position.set(c.userData.sx * 1.75 * spread, c.userData.sy * 1.95 * spread, 0.5);
@@ -1469,7 +1598,7 @@ function frame(time) {
     r.filMat.opacity = appear;
     r.filMat.color.copy(LUCE_INTERNA).multiplyScalar((1.5 + 0.5 * (r.glow || 1)) * (1 + r.flash * 0.4));
     r.grains.material.opacity = 0.75 * appear;
-    r.group.rotation.z += dt * (0.04 + i * 0.015);
+    if (!V2) r.group.rotation.z += dt * (0.04 + i * 0.015); // le parentesi restano dritte, come nel logo
     r.grains.rotation.z -= dt * 0.18;
     r.ticks.rotation.z -= dt * 0.05;
     const d = cz - r.z;
@@ -1615,6 +1744,11 @@ function frame(time) {
   aggiornaBolla(t);
   prevCamZ = cz;
   adaptQuality(dt);
+  if (MISURA) {
+    pOra = p;
+    mAcc += dt; mN++;
+    if (mAcc > 0.5) { MISURA.textContent = [`${Math.round(mN / mAcc)} fps · percorso ${p.toFixed(2)} · risoluzione ${pr.toFixed(2)}`, ...note].join(String.fromCharCode(10)); mAcc = 0; mN = 0; }
+  }
   composer.render();
   requestAnimationFrame(frame);
 }
