@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import Lenis from 'lenis';
 import { FORMATI } from './formati.js';
 import { storia } from './storia.js';
-import { leggi, inserisci, segnala, indirizzoCopertina } from './dati.js';
+import { leggi, inserisci, segnala, indirizzoCopertina, appuntamenti } from './dati.js';
 import { dataItaliana } from './testo.js';
 import { apriPortaSegreta, PORTA_ATTESA } from './porta-segreta.js';
 segnala('chi-siamo', 'arrivo');
@@ -93,23 +93,44 @@ $$('[data-r], [data-split]').forEach((el) => reveal.observe(el));
 /* quelli già passati spariscono da questa sezione, da soli, ogni giorno.*/
 /* Gli appuntamenti senza data (data-date assente) restano in fondo.     */
 /* ------------------------------------------------------------------ */
+/* Dal 12/11 gli appuntamenti arrivano dal gestionale (scheda Eventi) e dai post di Instagram con una data:  */
+/* quelli scritti in chi-siamo.html restano solo come riserva, se l'archivio non risponde.                 */
 const today = new Date(); today.setHours(0, 0, 0, 0);
 const upcoming = $('#upcoming');
 const giorno = (a) => new Date(a.dataset.date + 'T00:00:00');
-const datati = $$('#upcoming [data-date]').filter((a) => {
-  if (giorno(a) >= today) return true;
-  a.remove(); // passato: fuori dalla sezione
-  return false;
-}).sort((x, y) => giorno(x) - giorno(y));
-const senzaData = $$('#upcoming > article:not([data-date])');
-[...datati, ...senzaData].forEach((a) => upcoming.appendChild(a));
-datati.forEach((a) => {
-  const days = Math.round((giorno(a) - today) / 86400000);
-  const c = $('.count', a);
-  if (days === 0) c.textContent = 'oggi';
-  else if (days === 1) c.textContent = 'domani';
-  else if (days <= 30) c.textContent = `tra ${days} giorni`;
-});
+function ordinaAppuntamenti() {
+  const datati = $$('#upcoming [data-date]').filter((a) => {
+    if (giorno(a) >= today) return true;
+    a.remove(); // passato: fuori dalla sezione
+    return false;
+  }).sort((x, y) => giorno(x) - giorno(y));
+  const senzaData = $$('#upcoming > article:not([data-date])');
+  [...datati, ...senzaData].forEach((a) => upcoming.appendChild(a));
+  datati.forEach((a) => {
+    const days = Math.round((giorno(a) - today) / 86400000);
+    const c = $('.count', a);
+    if (days === 0) c.textContent = 'oggi';
+    else if (days === 1) c.textContent = 'domani';
+    else if (days <= 30) c.textContent = `tra ${days} giorni`;
+  });
+}
+ordinaAppuntamenti();
+const MESI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+appuntamenti().then((elenco) => {
+  const vivi = elenco.filter((e) => e.stato === 'visibile' && e.titolo);
+  if (!elenco.length) return; // archivio vuoto: restano quelli scritti nella pagina
+  upcoming.innerHTML = vivi.map((e) => {
+    const d = e.data ? new Date(e.data + 'T00:00:00') : null;
+    const [b, s] = d ? [d.getDate(), MESI[d.getMonth()]] : (e.riquadro || 'presto').split(' ');
+    return `<article data-r ${d ? `data-date="${e.data}"` : ''}>
+      <div class="d"><b>${esc(b)}</b><span>${esc(s || '')}</span></div>
+      <div class="t"><p class="when">${esc(e.quando || '')} <em class="count"></em></p><h3>${esc(e.titolo)}</h3>${e.testo ? `<p>${esc(e.testo)}</p>` : ''}
+      ${e.link ? `<p><a href="${esc(e.link)}" target="_blank" rel="noopener">Il post su Instagram ↗</a></p>` : ''}</div>
+    </article>`;
+  }).join('');
+  ordinaAppuntamenti();
+  $$('#upcoming [data-r]').forEach((a) => reveal.observe(a));
+}).catch(() => { /* restano quelli scritti nella pagina */ });
 
 /* ------------------------------------------------------------------ */
 /* binario dei format: si trascina                                     */

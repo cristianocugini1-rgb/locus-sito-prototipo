@@ -285,10 +285,18 @@ function apri(a, cronologia) {
   lettura.setAttribute('aria-hidden', 'false');
   // l'indirizzo dell'articolo, da condividere; il tasto indietro del telefono richiude
   if (cronologia) history.pushState({ a: a.slug }, '', `?a=${encodeURIComponent(a.slug)}`);
-  segnala('articolo', 'arrivo');
+  segnala('articolo', 'arrivo', a.slug);
+  // letto fino in fondo: arrivati al 90% della pagina; se l'articolo sta tutto nello schermo, dopo 20 secondi
+  inLettura = a.slug;
+  clearTimeout(attesaBreve);
+  attesaBreve = setTimeout(() => {
+    if (inLettura === a.slug && lettura.scrollHeight - lettura.clientHeight < 40) segnala('articolo', 'fine', a.slug);
+  }, 20000);
 }
+let inLettura = null, attesaBreve = 0;
 function chiudi(cronologia) {
   if (!document.body.classList.contains('legge')) return;
+  inLettura = null;
   document.body.classList.remove('legge');
   lettura.setAttribute('aria-hidden', 'true');
   document.title = 'Locus · Diario';
@@ -306,6 +314,7 @@ addEventListener('popstate', () => {
 lettura.addEventListener('scroll', () => {
   const max = lettura.scrollHeight - lettura.clientHeight;
   $('#l-barra').style.transform = `scaleX(${max > 0 ? lettura.scrollTop / max : 0})`;
+  if (inLettura && max > 0 && lettura.scrollTop / max > 0.9) segnala('articolo', 'fine', inLettura);
 });
 
 addEventListener('resize', () => { misura(); misuraVoci(); disegna(true); });

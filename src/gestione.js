@@ -1,4 +1,4 @@
-// Il gestionale di Locus: si entra con email e password, poi articoli, registro delle tessere,
+// Il gestionale di Locus: si entra con email e password, poi articoli, eventi, richieste e registro delle tessere,
 // statistiche e persone. Cosa si vede dipende dal livello: redazione (solo articoli) o completo (tutto).
 // Le regole vere stanno nell'archivio (Supabase): anche forzando la pagina, nessuno vede più del suo livello.
 import { createClient } from '@supabase/supabase-js';
@@ -74,6 +74,8 @@ async function entra() {
 /* ------------------------------------------------------------------ */
 const SCHEDE = [
   { id: 'articoli', nome: 'Articoli', livelli: ['redazione', 'completo'], apri: () => listaArticoli() },
+  { id: 'eventi', nome: 'Eventi', livelli: ['redazione', 'completo'], apri: () => eventi() },
+  { id: 'richieste', nome: 'Richieste', livelli: ['completo'], apri: () => richieste() },
   { id: 'tessere', nome: 'Tessere', livelli: ['completo'], apri: () => registro() },
   { id: 'statistiche', nome: 'Statistiche', livelli: ['completo'], apri: () => statistiche() },
   { id: 'persone', nome: 'Persone', livelli: ['completo'], apri: () => persone() },
@@ -89,11 +91,13 @@ function costruisciSchede() {
   mie.forEach((s) => {
     const b = document.createElement('button');
     b.textContent = s.nome;
+    b.dataset.id = s.id;
     b.onclick = () => { nav.querySelectorAll('button').forEach((x) => x.classList.toggle('su', x === b)); location.hash = s.id; s.apri(); };
     nav.appendChild(b);
   });
   const dalLink = mie.findIndex((s) => s.id === location.hash.slice(1));
   nav.children[Math.max(0, dalLink)].click();
+  aggiornaConteggio();
 }
 
 /* ------------------------------------------------------------------ */
@@ -374,33 +378,340 @@ async function scaricaRegistro() {
 }
 
 /* ------------------------------------------------------------------ */
-/* statistiche: passaggi degli ultimi 30 giorni, senza cookie           */
+/* statistiche (dal 12/11): totali calcolati dall'archivio, periodo a  */
+/* scelta e confronto con il periodo prima. Niente cookie, niente dati */
+/* di chi visita: solo pagina, passo, telefono o computer, provenienza */
 /* ------------------------------------------------------------------ */
+const statoStat = { giorni: 30 };
+const NOMI_PROV = {
+  diretto: 'Link diretto o app', interno: 'Da un\'altra pagina del sito', instagram: 'Instagram', facebook: 'Facebook', google: 'Google',
+  'altri motori': 'Altri motori di ricerca', whatsapp: 'WhatsApp', linkedin: 'LinkedIn', tiktok: 'TikTok', x: 'X', telegram: 'Telegram',
+};
+const nomeProv = (p) => (p.startsWith('da:') ? `Codice «${p.slice(3)}»` : NOMI_PROV[p] || p);
+const giornoLocale = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const GIORNI_SETT = ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom'];
+const indirizzoSito = () => new URL(import.meta.env.BASE_URL, location.origin).href;
+
 async function statistiche() {
-  vista.innerHTML = '<div class="testa"><h2>Statistiche</h2><p class="aiuto">Ultimi 30 giorni. Si conta solo il passaggio: niente cookie, niente dati di chi visita.</p></div><div id="s-box">Carico…</div>';
-  const da = new Date(Date.now() - 30 * 864e5).toISOString();
-  const { data, error } = await sb.from('visite').select('pagina,evento,telefono,creato').gte('creato', da).limit(20000);
-  if (error) return ($('#s-box').textContent = spiegaErrore(error));
-  const conta = (f) => data.filter(f).length;
-  const arrivi = conta((v) => v.pagina === 'home' && v.evento === 'arrivo');
-  const voci = [
-    [arrivi, 'visite alla pagina iniziale'],
-    [conta((v) => v.evento === 'salta'), 'hanno saltato l\'introduzione'],
-    [conta((v) => v.evento === 'fine-percorso'), 'sono arrivati in fondo al viaggio'],
-    [conta((v) => v.pagina === 'chi-siamo' && v.evento === 'arrivo'), 'visite a Chi siamo'],
-    [conta((v) => v.pagina === 'articolo'), 'letture di articoli'],
-    [conta((v) => v.evento === 'richiesta-tessera'), 'richieste di tessera dal sito'],
-    [arrivi ? Math.round((100 * conta((v) => v.pagina === 'home' && v.evento === 'arrivo' && v.telefono)) / arrivi) + '%' : '0%', 'delle visite da telefono'],
+  const G = statoStat.giorni;
+  vista.innerHTML = `<div class="testa"><div><h2>Statistiche</h2><p class="aiuto">Si conta solo il passaggio: niente cookie, niente dati di chi visita. Le frecce confrontano con i ${G} giorni prima.</p></div>
+    <div class="periodo">${[7, 30, 90].map((g) => `<button data-g="${g}" class="${g === G ? 'su' : ''}">${g} giorni</button>`).join('')}</div></div>
+    <div id="s-box">Carico…</div>`;
+  vista.querySelectorAll('[data-g]').forEach((b) => { b.onclick = () => { statoStat.giorni = Number(b.dataset.g); statistiche(); }; });
+  const ora = new Date(), inizio = new Date();
+  inizio.setHours(0, 0, 0, 0); inizio.setDate(inizio.getDate() - (G - 1));
+  const prima = new Date(inizio); prima.setDate(prima.getDate() - G);
+  const [cur, prec, art] = await Promise.all([
+    sb.rpc('statistiche', { da: inizio.toISOString(), a: ora.toISOString() }),
+    sb.rpc('statistiche', { da: prima.toISOString(), a: inizio.toISOString() }),
+    sb.from('articoli').select('slug,titolo'),
+  ]);
+  if (cur.error) return ($('#s-box').textContent = spiegaErrore(cur.error));
+  if (!cur.data) return ($('#s-box').textContent = 'Il tuo livello non permette di vedere le statistiche.');
+  const S = cur.data, P = prec.data;
+  const somma = (s, f) => (s?.eventi || []).filter(f).reduce((t, x) => t + x.n, 0);
+  const voce = (f) => [somma(S, f), P ? somma(P, f) : null];
+  const freccia = ([n, p]) => {
+    if (p === null || (!p && !n)) return '';
+    if (!p) return '<em class="su">nuovo</em>';
+    const d = Math.round((100 * (n - p)) / p);
+    return d === 0 ? '<em>come prima</em>' : `<em class="${d > 0 ? 'su' : 'giu'}">${d > 0 ? '▲' : '▼'} ${Math.abs(d)}%</em>`;
+  };
+  const ingressi = voce((x) => x.evento === 'ingresso');
+  const daTelefono = somma(S, (x) => x.evento === 'ingresso' && x.telefono);
+  const numeri = [
+    [ingressi, 'visite al sito'],
+    [voce((x) => x.pagina === 'home' && x.evento === 'arrivo'), 'arrivi alla pagina iniziale'],
+    [voce((x) => x.evento === 'salta'), 'hanno saltato l\'introduzione'],
+    [voce((x) => x.evento === 'fine-percorso'), 'arrivati in fondo al viaggio'],
+    [voce((x) => x.pagina === 'chi-siamo' && x.evento === 'arrivo'), 'visite a Chi siamo'],
+    [voce((x) => x.pagina === 'diario' && x.evento === 'arrivo'), 'visite al Diario'],
+    [voce((x) => x.pagina === 'articolo' && x.evento === 'arrivo'), 'articoli aperti'],
+    [voce((x) => x.evento === 'richiesta-tessera'), 'richieste di tessera dal sito'],
   ];
+
+  // visite giorno per giorno
+  const perGiorno = Object.fromEntries((S.giorni || []).map((x) => [x.g, x.n]));
   const giorni = [];
-  for (let i = 29; i >= 0; i--) {
-    const g = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
-    giorni.push([g, data.filter((v) => v.evento === 'arrivo' && v.creato.slice(0, 10) === g).length]);
+  for (let d = new Date(inizio); d <= ora; d.setDate(d.getDate() + 1)) giorni.push([giornoLocale(d), perGiorno[giornoLocale(d)] || 0]);
+  const maxG = Math.max(1, ...giorni.map((g) => g[1]));
+  const etichetta = (g) => new Date(g + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+
+  // articoli più letti
+  const titoli = Object.fromEntries((art.data || []).map((a) => [a.slug, a.titolo]));
+  const perArt = {};
+  (S.articoli || []).forEach((x) => {
+    const r = (perArt[x.s] ||= { aperti: 0, fine: 0 });
+    if (x.evento === 'arrivo') r.aperti += x.n;
+    if (x.evento === 'fine') r.fine += x.n;
+  });
+  const classifica = Object.entries(perArt).sort((a, b) => b[1].aperti - a[1].aperti);
+
+  // provenienze
+  const prov = (S.provenienze || []).slice().sort((a, b) => b.n - a.n);
+  const totProv = prov.reduce((t, x) => t + x.n, 0) || 1;
+
+  // giorni e ore
+  const mappa = Array.from({ length: 7 }, () => Array(24).fill(0));
+  (S.orari || []).forEach((x) => { mappa[x.d - 1][x.h] += x.n; });
+  const maxM = Math.max(1, ...mappa.flat());
+
+  // fluidità: a che risoluzione si è assestato il sito, per telefono e computer
+  const flu = (tel) => {
+    const righe = (S.fluidita || []).filter((x) => x.telefono === tel);
+    const tot = righe.reduce((t, x) => t + x.n, 0);
+    const conta = (f) => righe.filter((x) => x.r.startsWith(f)).reduce((t, x) => t + x.n, 0);
+    return { tot, piena: conta('piena'), ridotta: conta('ridotta'), minima: conta('minima'), leggera: righe.filter((x) => x.r.endsWith('-leggera')).reduce((t, x) => t + x.n, 0) };
+  };
+  const pc = (n, t) => (t ? Math.round((100 * n) / t) : 0);
+  const rigaFlu = (nome, f) => (!f.tot ? `<div class="flu"><span>${nome}</span><p class="aiuto">Ancora nessuna misura.</p></div>` : `<div class="flu"><span>${nome} · ${f.tot} visite misurate</span>
+    <div class="pila"><i class="piena" style="width:${pc(f.piena, f.tot)}%"></i><i class="ridotta" style="width:${pc(f.ridotta, f.tot)}%"></i><i class="minima" style="width:${pc(f.minima, f.tot)}%"></i></div>
+    <p class="aiuto">${pc(f.piena, f.tot)}% fluido a piena risoluzione, ${pc(f.ridotta, f.tot)}% ha dovuto abbassarla, ${pc(f.minima, f.tot)}% è sceso al minimo.${f.leggera ? ` ${pc(f.leggera, f.tot)}% ha avuto la versione leggera.` : ''}</p></div>`);
+
+  $('#s-box').innerHTML = `
+    <div class="numeri">${numeri.map(([v, t]) => `<div><b>${v[0]}</b><span>${t}</span>${freccia(v)}</div>`).join('')}
+      <div><b>${ingressi[0] ? Math.round((100 * daTelefono) / ingressi[0]) : 0}%</b><span>delle visite da telefono</span></div></div>
+
+    <h3>Visite al giorno</h3>
+    <div class="giorni">${giorni.map(([g, n]) => `<i style="height:${(100 * n) / maxG}%" data-t="${etichetta(g)}: ${n}"></i>`).join('')}</div>
+    <div class="asse"><span>${etichetta(giorni[0][0])}</span><span>oggi</span></div>
+
+    <div class="colonne-stat">
+      <section>
+        <h3>Articoli più letti</h3>
+        ${classifica.length ? `<table><thead><tr><th>Articolo</th><th>Aperti</th><th>Letti fino in fondo</th></tr></thead><tbody>${classifica.map(([s, r]) => `
+          <tr class="ferma"><td>${esc(titoli[s] || s)}</td><td>${r.aperti}</td><td>${r.fine} <span class="aiuto">(${pc(r.fine, r.aperti)}%)</span></td></tr>`).join('')}</tbody></table>`
+          : '<p class="vuoto">Nessun articolo letto in questo periodo.</p>'}
+      </section>
+      <section>
+        <h3>Da dove arrivano</h3>
+        ${prov.length ? `<div class="barre">${prov.map((x) => `<div><span>${esc(nomeProv(x.p))}</span><i style="width:${(100 * x.n) / prov[0].n}%"></i><b>${x.n} <small>${pc(x.n, totProv)}%</small></b></div>`).join('')}</div>`
+          : '<p class="vuoto">Ancora nessuna visita registrata con la provenienza.</p>'}
+        <p class="aiuto">"Link diretto o app" comprende WhatsApp e molte app, che non dicono da dove arriva il link. Per saperlo con certezza, usa un codice:</p>
+        <div class="codice"><input id="c-nome" placeholder="es. volantino-novembre" maxlength="50" /><input id="c-link" readonly /><button id="c-copia">Copia</button></div>
+      </section>
+    </div>
+
+    <h3>Quando arrivano</h3>
+    <div class="mappa-box"><table class="mappa"><thead><tr><th></th>${Array.from({ length: 24 }, (_, h) => `<th>${h % 3 === 0 ? h : ''}</th>`).join('')}</tr></thead><tbody>
+      ${mappa.map((riga, d) => `<tr class="ferma"><th>${GIORNI_SETT[d]}</th>${riga.map((n, h) => `<td style="--k:${(n / maxM).toFixed(2)}" title="${GIORNI_SETT[d]} ore ${h}: ${n} visite"></td>`).join('')}</tr>`).join('')}
+    </tbody></table></div>
+    <p class="aiuto">Più il quadretto è acceso, più visite in quell'ora (ora italiana). Utile per scegliere quando pubblicare su Instagram.</p>
+
+    <h3>Quanto fatica il sito</h3>
+    <p class="aiuto">Il sito abbassa da solo la risoluzione se il dispositivo non regge. Qui si vede dove si è assestato, alla fine di ogni visita alla pagina iniziale.</p>
+    ${rigaFlu('Telefoni', flu(true))}${rigaFlu('Computer', flu(false))}`;
+
+  const nome = $('#c-nome'), link = $('#c-link');
+  const scriviLink = () => {
+    const c = nome.value.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-|-$/g, '');
+    link.value = c ? `${indirizzoSito()}?da=${c}` : '';
+  };
+  nome.oninput = scriviLink;
+  $('#c-copia').onclick = async () => {
+    if (!link.value) return nome.focus();
+    try { await navigator.clipboard.writeText(link.value); $('#c-copia').textContent = 'Copiato'; } catch (_) { link.select(); }
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* eventi (dal 12/11): gli appuntamenti di "Cosa arriva" in Chi siamo. */
+/* Quelli letti da Instagram arrivano da soli; qui si correggono o si  */
+/* nascondono, e si aggiungono quelli che su Instagram non ci sono.    */
+/* ------------------------------------------------------------------ */
+async function eventi() {
+  vista.innerHTML = `<div class="testa"><div><h2>Eventi</h2>
+      <p class="aiuto">Compaiono in Chi siamo, sezione "Cosa arriva", dal più vicino; quelli passati spariscono da soli.</p></div>
+      <button class="primo" id="ev-nuovo">Nuovo appuntamento</button></div>
+    <p class="avviso" id="ev-ig"></p><div id="ev-box">Carico…</div>`;
+  $('#ev-nuovo').onclick = () => evento({ origine: 'mano', stato: 'visibile' });
+  const [ig, db] = await Promise.all([
+    fetch(`${import.meta.env.BASE_URL}eventi-instagram.json`, { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    sb.from('eventi').select('*'),
+  ]);
+  if (db.error) return ($('#ev-box').textContent = spiegaErrore(db.error));
+  $('#ev-ig').innerHTML = ig?.aggiornato
+    ? `Instagram collegato: i post che annunciano una data diventano appuntamenti da soli, con qualche ora di ritardo (ultimo controllo ${dataItaliana(ig.aggiornato)}). Se la lettura sbaglia, apri l'appuntamento e correggilo; se non è un appuntamento, nascondilo.`
+    : 'Instagram non è ancora collegato al sito (manca il token di Instagram): per ora valgono solo gli appuntamenti scritti qui.';
+  const corretti = new Set(db.data.filter((e) => e.ig_id).map((e) => e.ig_id));
+  const tutti = [...db.data, ...(ig?.eventi || []).filter((e) => !corretti.has(e.ig_id)).map((e) => ({ ...e, origine: 'instagram', stato: 'visibile', letto: true }))];
+  const oggiL = giornoLocale(new Date());
+  const inArrivo = tutti.filter((e) => e.data && e.data >= oggiL).sort((a, b) => a.data.localeCompare(b.data));
+  const senzaData = tutti.filter((e) => !e.data);
+  const passati = tutti.filter((e) => e.data && e.data < oggiL).sort((a, b) => b.data.localeCompare(a.data));
+  const quando = (e) => (e.data ? new Date(e.data + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' }) : esc(e.riquadro || 'senza data'));
+  const origine = (e) => (e.origine === 'mano' ? 'scritto qui' : e.letto ? 'da Instagram, automatico' : 'da Instagram, corretto qui');
+  const tabella = (righe) => `<table><thead><tr><th>Quando</th><th>Appuntamento</th><th>Da dove</th><th>Sul sito</th></tr></thead><tbody>${righe.map((e) => `
+    <tr data-k="${tutti.indexOf(e)}" class="${e.stato === 'nascosto' ? 'spento' : ''}"><td>${quando(e)}</td><td><b>${esc(e.titolo)}</b><br><span class="aiuto">${esc(e.quando || '')}</span></td>
+    <td><span class="stato ${e.origine === 'mano' ? '' : 'ig'}">${origine(e)}</span></td><td>${e.stato === 'nascosto' ? 'nascosto' : 'visibile'}</td></tr>`).join('')}</tbody></table>`;
+  $('#ev-box').innerHTML = `
+    <h3>In arrivo</h3>${inArrivo.length ? tabella(inArrivo) : '<p class="vuoto">Nessun appuntamento in calendario.</p>'}
+    ${senzaData.length ? `<h3>Senza data (in fondo alla sezione)</h3>${tabella(senzaData)}` : ''}
+    ${passati.length ? `<details><summary>Passati (${passati.length}): sul sito non si vedono più</summary>${tabella(passati)}</details>` : ''}`;
+  $('#ev-box').querySelectorAll('tr[data-k]').forEach((tr) => { tr.onclick = () => evento(tutti[Number(tr.dataset.k)]); });
+}
+
+function evento(e) {
+  const box = document.createElement('div');
+  box.className = 'pannello';
+  box.innerHTML = `<form>
+    <div class="testa"><h2>${e.titolo ? esc(e.titolo) : 'Nuovo appuntamento'}</h2><button type="button" class="link" data-chiudi>chiudi</button></div>
+    ${e.letto ? `<p class="avviso">Letto in automatico da <a href="${esc(e.link)}" target="_blank" rel="noopener">questo post</a>. Se salvi, la tua versione prende il posto della lettura automatica.</p>` : ''}
+    ${e.id && e.ig_id ? `<p class="avviso">Corretto a mano: viene da <a href="${esc(e.link || '#')}" target="_blank" rel="noopener">questo post</a>.</p>` : ''}
+    <div class="due">
+      <label>Data<input name="data" type="date" value="${e.data || ''}" /></label>
+      <label>Riquadro, se non c'è la data<input name="riquadro" placeholder="es. nov 2026" value="${esc(e.riquadro || '')}" /></label>
+    </div>
+    <label>Quando (riga sopra il titolo)<input name="quando" placeholder="es. Sabato, ore 15.00" value="${esc(e.quando || '')}" /></label>
+    <label>Titolo<input name="titolo" required maxlength="140" value="${esc(e.titolo || '')}" /></label>
+    <label>Testo<textarea name="testo" maxlength="500" style="min-height:110px;font:15px/1.45 'Inter',sans-serif">${esc(e.testo || '')}</textarea></label>
+    <label>Link (facoltativo, es. il post su Instagram)<input name="link" type="url" value="${esc(e.link || '')}" /></label>
+    <label>Sul sito<select name="stato"><option value="visibile" ${e.stato !== 'nascosto' ? 'selected' : ''}>visibile</option><option value="nascosto" ${e.stato === 'nascosto' ? 'selected' : ''}>nascosto</option></select></label>
+    <div class="azioni">
+      <button class="primo" type="submit">Salva</button>
+      ${e.letto ? '<button type="button" data-nascondi>Non è un appuntamento: nascondi</button>' : ''}
+      ${e.id && e.ig_id ? '<button type="button" data-auto>Torna alla lettura automatica</button>' : ''}
+      ${e.id && !e.ig_id ? '<button type="button" class="rosso" data-elimina>Elimina</button>' : ''}
+    </div>
+    <p class="msg" aria-live="polite"></p>
+  </form>`;
+  document.body.appendChild(box);
+  const form = box.querySelector('form'), msg = box.querySelector('.msg');
+  const chiudi = () => box.remove();
+  box.addEventListener('click', (ev) => { if (ev.target === box || ev.target.dataset.chiudi !== undefined) chiudi(); });
+  const salva = async (extra = {}) => {
+    if (!extra.stato && !form.reportValidity()) return;
+    const d = Object.fromEntries(new FormData(form));
+    for (const k in d) d[k] = d[k].trim() || null;
+    const riga = { ...d, titolo: d.titolo || e.titolo, ...extra };
+    const q = e.id ? sb.from('eventi').update(riga).eq('id', e.id) : sb.from('eventi').insert({ ...riga, origine: e.origine || 'mano', ig_id: e.ig_id || null });
+    const { error } = await q;
+    if (error) return scrivi(msg, spiegaErrore(error), 'no');
+    chiudi(); eventi();
+  };
+  form.addEventListener('submit', (ev) => { ev.preventDefault(); salva(); });
+  box.querySelector('[data-nascondi]')?.addEventListener('click', () => salva({ stato: 'nascosto' }));
+  const togli = async (domanda) => {
+    if (!confirm(domanda)) return;
+    const { error } = await sb.from('eventi').delete().eq('id', e.id);
+    if (error) return scrivi(msg, spiegaErrore(error), 'no');
+    chiudi(); eventi();
+  };
+  box.querySelector('[data-auto]')?.addEventListener('click', () => togli('Togliere la correzione? Torna a valere quello che il sito legge dal post.'));
+  box.querySelector('[data-elimina]')?.addEventListener('click', () => togli(`Eliminare "${e.titolo}"? Non si può annullare.`));
+}
+
+/* ------------------------------------------------------------------ */
+/* richieste di tessera (dal 12/11): dal modulo del sito all'attivazione,*/
+/* in tre colonne. Le mail partono dal programma di posta di chi clicca */
+/* ------------------------------------------------------------------ */
+// DA COMPLETARE: i dati veri per versare la quota (li deve dare il tesoriere)
+const DATI_PAGAMENTO = 'Bonifico: IBAN [da inserire], intestato a Locus\nPayPal: [indirizzo da inserire]';
+const giorniDa = (d) => Math.floor((Date.now() - new Date(d).getTime()) / 864e5);
+const eta = (d) => (d ? Math.floor((Date.now() - new Date(d + 'T12:00:00').getTime()) / (365.25 * 864e5)) : null);
+function testoMail(r, tipo) {
+  const firma = '\n\nA presto,\nLocus';
+  if (tipo === 'paga') return ['La tua tessera Locus', `Ciao ${r.nome},\n\ngrazie per aver chiesto di tesserarti a Locus.\n\nLa quota associativa è di ${r.quota ?? 15} euro e vale per tutto il ${r.anno}. Puoi versarla così:\n${DATI_PAGAMENTO}\nNella causale scrivi: Tessera Locus ${r.anno}, ${r.nome} ${r.cognome}.\n\nAppena arriva il pagamento attiviamo la tessera e ti scriviamo il numero.${firma}`];
+  if (tipo === 'sollecito') return ['La tua tessera Locus', `Ciao ${r.nome},\n\nti riscriviamo per la tessera che hai chiesto il ${dataItaliana(r.data_richiesta)}: non ci risulta ancora il pagamento della quota (${r.quota ?? 15} euro). Se l'hai già fatto, rispondi a questa mail e controlliamo.\n\nPer versarla:\n${DATI_PAGAMENTO}\nNella causale scrivi: Tessera Locus ${r.anno}, ${r.nome} ${r.cognome}.${firma}`];
+  return ['La tua tessera Locus è attiva', `Ciao ${r.nome},\n\nla tua tessera Locus ${r.anno} è attiva: è la numero ${r.numero}. Ti diamo il benvenuto.\n\nCi vediamo al prossimo Meet Up, il primo sabato del mese. Gli appuntamenti sono sul sito, in Chi siamo, e su Instagram (@locus_parma).${firma}`];
+}
+const apriMail = (r, tipo) => {
+  const [oggetto, corpo] = testoMail(r, tipo);
+  location.href = `mailto:${encodeURIComponent(r.email)}?subject=${encodeURIComponent(oggetto)}&body=${encodeURIComponent(corpo)}`;
+};
+
+async function richieste() {
+  vista.innerHTML = `<div class="testa"><div><h2>Richieste di tessera</h2>
+    <p class="aiuto">Arrivano dal modulo in Chi siamo. Si scrive con i dati per pagare, si aspetta il pagamento, si attiva: il numero di tessera lo dà l'archivio, in ordine.</p></div></div>
+    ${DATI_PAGAMENTO.includes('[da inserire]') ? '<p class="avviso">Nelle mail mancano ancora IBAN e PayPal veri: finché non ci sono, controlla il testo prima di inviare.</p>' : ''}
+    <div id="r-box">Carico…</div>`;
+  registro.ricarica = richieste; // la scheda completa, chiusa, torna qui
+  const [att, tutte] = await Promise.all([
+    sb.from('tessere').select('*').eq('stato', 'in attesa').order('data_richiesta'),
+    sb.from('tessere').select('*').order('data_ammissione', { ascending: false, nullsFirst: false }),
+  ]);
+  if (att.error || tutte.error) return ($('#r-box').textContent = spiegaErrore(att.error || tutte.error));
+  aggiornaConteggio(att.data.length);
+  const rinnovo = (r) => tutte.data.some((t) => t.id !== r.id && t.anno < r.anno
+    && ((t.email && r.email && t.email.toLowerCase() === r.email.toLowerCase()) || (t.codice_fiscale && t.codice_fiscale === r.codice_fiscale)));
+  const nuove = att.data.filter((r) => !r.contattata_il);
+  const aspetto = att.data.filter((r) => r.contattata_il);
+  const limite = giornoLocale(new Date(Date.now() - 30 * 864e5));
+  const attivate = tutte.data.filter((t) => t.stato === 'attiva' && t.data_ammissione >= limite);
+  const scheda = (r, fase) => {
+    const gc = r.contattata_il ? giorniDa(r.contattata_il) : 0;
+    const info = [eta(r.data_nascita) !== null ? `${eta(r.data_nascita)} anni` : '', r.comune_residenza, r.telefono].filter(Boolean).map(esc).join(' · ');
+    let quando, azioni;
+    if (fase === 'nuova') {
+      quando = `Richiesta ${giorniDa(r.data_richiesta) === 0 ? 'oggi' : `${giorniDa(r.data_richiesta)} giorni fa`}`;
+      azioni = '<button class="primo" data-a="paga">Scrivi i dati per pagare</button><button data-a="pagata">Ha pagato</button>';
+    } else if (fase === 'aspetto') {
+      quando = `Scritto ${gc === 0 ? 'oggi' : `${gc} giorni fa`}${gc >= 10 ? ' · <b class="tardi">da sollecitare</b>' : ''}`;
+      azioni = `<button class="primo" data-a="pagata">Ha pagato</button><button data-a="sollecito" class="${gc >= 10 ? 'acceso' : ''}">Sollecita</button>`;
+    } else {
+      quando = `Tessera n. <b>${r.numero}</b> · ${esc(r.metodo_pagamento || '')} · attiva dal ${dataItaliana(r.data_ammissione)}`;
+      azioni = '<button data-a="benvenuto">Scrivi il benvenuto</button>';
+    }
+    return `<div class="rich" data-id="${r.id}">
+      <div class="r-testa"><b>${esc(r.cognome)} ${esc(r.nome)}</b>${rinnovo(r) ? '<span class="stato">rinnovo</span>' : ''}</div>
+      <p class="r-info"><a href="mailto:${esc(r.email)}">${esc(r.email)}</a>${info ? `<br>${info}` : ''}</p>
+      <p class="r-quando">${quando}</p>
+      <div class="azioni">${azioni}${fase !== 'fatta' ? '<button class="link" data-a="scheda">scheda</button><button class="link" data-a="respingi">respingi</button>' : ''}</div>
+      <div class="r-paga" hidden><select><option value="bonifico">bonifico</option><option value="paypal">PayPal</option><option value="contanti">contanti</option></select><button class="primo" data-a="attiva">Attiva la tessera</button></div>
+      <p class="msg" aria-live="polite"></p>
+    </div>`;
+  };
+  const colonna = (titolo, spiega, righe, fase, vuoto) => `<section><h3>${titolo} <span class="quanti">${righe.length}</span></h3><p class="aiuto">${spiega}</p>
+    ${righe.length ? righe.map((r) => scheda(r, fase)).join('') : `<p class="vuoto">${vuoto}</p>`}</section>`;
+  $('#r-box').innerHTML = `<div class="colonne">
+    ${colonna('Nuove', 'Da contattare con i dati per pagare.', nuove, 'nuova', 'Nessuna richiesta nuova.')}
+    ${colonna('Aspettiamo il pagamento', 'Dopo 10 giorni senza pagamento conviene sollecitare.', aspetto, 'aspetto', 'Nessuno in attesa di pagamento.')}
+    ${colonna('Attivate', 'Negli ultimi 30 giorni.', attivate, 'fatta', 'Nessuna tessera attivata di recente.')}
+  </div>`;
+  const tutteRighe = [...att.data, ...attivate];
+  $('#r-box').querySelectorAll('.rich').forEach((el) => {
+    const r = tutteRighe.find((x) => x.id === el.dataset.id), msg = el.querySelector('.msg');
+    el.querySelectorAll('[data-a]').forEach((b) => {
+      b.onclick = async () => {
+        const a = b.dataset.a;
+        if (a === 'paga' || a === 'sollecito') {
+          apriMail(r, a);
+          const { error } = await sb.from('tessere').update({ contattata_il: oggi() }).eq('id', r.id);
+          if (error) return scrivi(msg, spiegaErrore(error), 'no');
+          setTimeout(richieste, 600);
+        } else if (a === 'pagata') {
+          el.querySelector('.r-paga').hidden = false;
+        } else if (a === 'attiva') {
+          const metodo = el.querySelector('.r-paga select').value;
+          const { data, error } = await sb.from('tessere').update({ stato: 'attiva', metodo_pagamento: metodo, data_pagamento: oggi() }).eq('id', r.id).select('numero').single();
+          if (error) return scrivi(msg, spiegaErrore(error), 'no');
+          scrivi(msg, `Attiva: tessera n. ${data.numero}.`, 'ok');
+          setTimeout(richieste, 900);
+        } else if (a === 'benvenuto') {
+          apriMail(r, 'benvenuto');
+        } else if (a === 'scheda') {
+          tessera(r);
+        } else if (a === 'respingi') {
+          if (!confirm(`Respingere la richiesta di ${r.nome} ${r.cognome}? Resta nel registro come "respinta".`)) return;
+          const { error } = await sb.from('tessere').update({ stato: 'respinta' }).eq('id', r.id);
+          if (error) return scrivi(msg, spiegaErrore(error), 'no');
+          richieste();
+        }
+      };
+    });
+  });
+}
+
+// il numero di richieste in attesa, accanto al nome della scheda
+async function aggiornaConteggio(n) {
+  const b = [...$('#schede').children].find((x) => x.dataset.id === 'richieste');
+  if (!b) return;
+  if (n === undefined) {
+    const { count } = await sb.from('tessere').select('id', { count: 'exact', head: true }).eq('stato', 'in attesa');
+    n = count || 0;
   }
-  const max = Math.max(1, ...giorni.map((g) => g[1]));
-  $('#s-box').innerHTML = `<div class="numeri">${voci.map(([n, t]) => `<div><b>${n}</b><span>${t}</span></div>`).join('')}</div>
-    <h2 style="font-size:18px;margin-bottom:12px">Visite al giorno</h2>
-    <div class="giorni">${giorni.map(([g, n]) => `<i style="height:${(100 * n) / max}%" data-t="${new Date(g).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}: ${n}"></i>`).join('')}</div>`;
+  b.querySelector('.conta')?.remove();
+  if (n) b.insertAdjacentHTML('beforeend', ` <span class="conta">${n}</span>`);
 }
 
 /* ------------------------------------------------------------------ */

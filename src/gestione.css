@@ -88,7 +88,59 @@ tbody tr:hover { background: rgba(245, 228, 203, .05); }
 .giorni i { flex: 1; background: var(--vivo); min-height: 1px; position: relative; }
 .giorni i:hover::after { content: attr(data-t); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); font-style: normal; font-size: 12px; white-space: nowrap; background: var(--nero); padding: 3px 6px; }
 
+/* dal 12/11: statistiche estese, eventi, richieste di tessera */
+h3 { font-family: 'Anton', sans-serif; font-weight: 400; text-transform: uppercase; font-size: 18px; letter-spacing: .02em; margin: 40px 0 12px; }
+.periodo { display: flex; gap: 4px; }
+.periodo button { padding: 8px 12px; opacity: .65; }
+.periodo button.su { opacity: 1; border-color: var(--vivo); }
+.numeri em { display: block; margin-top: 8px; font-style: normal; font-size: 12px; opacity: .7; }
+.numeri em.su { color: var(--verde); opacity: 1; }
+.numeri em.giu { color: #ffb3a3; opacity: 1; }
+.asse { display: flex; justify-content: space-between; font-size: 12px; opacity: .55; margin-top: 6px; }
+.colonne-stat { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+tbody tr.ferma { cursor: default; }
+tbody tr.ferma:hover { background: none; }
+.barre { display: grid; gap: 8px; }
+.barre div { display: grid; grid-template-columns: 170px 1fr 70px; gap: 10px; align-items: center; font-size: 14px; }
+.barre i { height: 14px; background: var(--vivo); min-width: 2px; }
+.barre b { font-weight: 600; text-align: right; }
+.barre small { font-weight: 400; opacity: .6; }
+.codice { display: grid; grid-template-columns: 1fr 1.6fr auto; gap: 8px; margin-top: 10px; }
+.codice input { font-size: 13px; padding: 8px 10px; }
+.mappa-box { overflow-x: auto; }
+.mappa { width: auto; border-collapse: separate; border-spacing: 3px; }
+.mappa th { padding: 0 4px; border: 0; font-size: 10px; letter-spacing: 0; text-align: center; }
+.mappa tbody th { text-align: right; }
+.mappa td { width: 22px; height: 22px; padding: 0; border: 0; background: rgba(208, 70, 46, calc(.06 + var(--k) * .94)); }
+.flu { margin: 14px 0 22px; }
+.flu > span { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; opacity: .85; }
+.pila { display: flex; height: 18px; margin-top: 8px; border: 1px solid var(--linea); }
+.pila .piena { background: var(--verde); }
+.pila .ridotta { background: #f0c27a; }
+.pila .minima { background: var(--vivo); }
+.avviso { border-left: 2px solid #f0c27a; padding: 8px 14px; font-size: 14px; background: rgba(240, 194, 122, .07); margin: 0 0 20px; }
+details summary { cursor: pointer; margin: 34px 0 12px; opacity: .75; }
+tr.spento td { opacity: .45; }
+.stato.ig { border-color: #e9a6d8; color: #e9a6d8; }
+#schede .conta { display: inline-block; min-width: 20px; padding: 1px 6px; margin-left: 4px; background: var(--vivo); color: #fff; border-radius: 10px; font-size: 11px; text-align: center; }
+.colonne { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; align-items: start; }
+.colonne h3 { margin-top: 0; }
+.quanti { opacity: .5; }
+.rich { border: 1px solid var(--linea); padding: 16px; margin-top: 12px; display: grid; gap: 8px; background: var(--nero); }
+.r-testa { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+.r-info, .r-quando { margin: 0; font-size: 13px; opacity: .85; }
+.r-info a { color: var(--crema); }
+.tardi { color: #f0c27a; }
+.rich .azioni button { padding: 8px 12px; }
+.rich button.acceso { border-color: #f0c27a; color: #f0c27a; }
+.r-paga { display: flex; gap: 8px; }
+.r-paga select { padding: 8px; }
+
 @media (max-width: 900px) {
+  .colonne, .colonne-stat { grid-template-columns: 1fr; }
+  .barre div { grid-template-columns: 110px 1fr 60px; }
+  .codice { grid-template-columns: 1fr; }
+  .mappa td, .mappa th { display: table-cell !important; } /* la regola sotto nasconde le colonne dalla quinta */
   .editor { grid-template-columns: 1fr; }
   .anteprima { position: static; max-height: none; }
   .due { grid-template-columns: 1fr; }

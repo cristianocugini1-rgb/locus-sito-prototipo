@@ -1485,6 +1485,15 @@ try {
   const ricordata = Number(localStorage.getItem(PR_CHIAVE));
   if (!FIXED_Q && ricordata && ricordata < pr) setPR(Math.max(PR_MIN, ricordata));
 } catch (_) { /* memoria del browser non disponibile */ }
+// statistiche (12/11): uscendo, a quale risoluzione si è assestato il sito su questo dispositivo. Solo la fascia
+// (piena, ridotta, minima), e solo dopo 15 secondi di visita, perché prima la misura non ha ancora lavorato
+function segnaFluidita() {
+  if (FIXED_Q || performance.now() < 15000) return;
+  const fascia = pr >= PR_MAX - 0.01 ? 'piena' : pr > PR_MIN + 0.01 ? 'ridotta' : 'minima';
+  segnala('home', 'fluidita', fascia + (LEGGERO ? '-leggera' : ''));
+}
+addEventListener('pagehide', segnaFluidita);
+document.addEventListener('visibilitychange', () => { if (document.hidden) segnaFluidita(); });
 // con ?misura, nella console del browser ogni blocco sopra i 50 ms, con il punto in cui è successo
 if (MISURA && 'PerformanceObserver' in window) {
   try {
