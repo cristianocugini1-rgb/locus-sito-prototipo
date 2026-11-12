@@ -28,4 +28,6 @@ export function segnala(pagina, evento) {
   inserisci('visite', { pagina, evento, telefono: matchMedia('(hover: none)').matches }).catch(() => {});
 }
 
-export const indirizzoCopertina = (nome) => (nome ? `${SUPABASE_URL}/storage/v1/object/public/copertine/${encodeURIComponent(nome)}` : '');
+// le copertine caricate dal gestionale stanno nell'archivio; quelle che iniziano con img/ sono foto del sito (articoli di prova)
+export const indirizzoCopertina = (nome) => (!nome ? '' : nome.startsWith('img/') ? import.meta.env.BASE_URL + nome
+  : `${SUPABASE_URL}/storage/v1/object/public/copertine/${encodeURIComponent(nome)}`);

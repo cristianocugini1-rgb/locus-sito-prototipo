@@ -9,6 +9,8 @@ import { inHtml, esc, dataItaliana } from './testo.js';
 
 segnala('diario', 'arrivo');
 
+// le immagini scritte nel codice: con la base del sito, se no su GitHub Pages non si trovano
+const BASE = import.meta.env.BASE_URL;
 const due = (n) => String(n).padStart(2, '0');
 const minuti = (testo) => Math.max(1, Math.round(String(testo || '').split(/\s+/).filter(Boolean).length / 200));
 
@@ -40,7 +42,7 @@ function destra(e) {
   if (e.tipo === 'fine') return `<div class="pg dx fine"><h2>Il prossimo capitolo è in scrittura.</h2><p class="somm" style="margin-top:8%">Hai un'idea per un articolo? Scrivici a locus.parma@gmail.com.</p></div>`;
   const foto = e.copertina
     ? `<figure><img src="${indirizzoCopertina(e.copertina)}" alt="" draggable="false" /></figure>`
-    : `<figure class="senza"><img src="/img/logo-L-bianco.png" alt="" draggable="false" /></figure>`;
+    : `<figure class="senza"><img src="${BASE}img/logo-L-bianco.png" alt="" draggable="false" /></figure>`;
   return `<div class="pg dx">${foto}<p class="meta">${esc(e.data)}</p><h2>${esc(e.titolo)}</h2><div class="piede"><span>N° ${due(e.n)}</span><span class="apri">Apri l'articolo &rarr;</span></div></div>`;
 }
 
@@ -68,7 +70,7 @@ function costruisci() {
     if (j === 0) {
       // la copertina: un piatto rigido, anche quando le pagine si curvano
       f.classList.add('piatto-copertina');
-      f.innerHTML = `<div class="faccia fronte"><div class="tavola"><img src="/img/logo-locus-bianco.png" alt="locus" /></div><i class="ombra"></i></div>`
+      f.innerHTML = `<div class="faccia fronte"><div class="tavola"><img src="${BASE}img/logo-locus-bianco.png" alt="locus" /></div><i class="ombra"></i></div>`
         + `<div class="faccia retro"><div class="risguardo">${retro}</div><i class="ombra"></i></div>`;
       f._strisce = null;
     } else if (modo === 'rigida') {
