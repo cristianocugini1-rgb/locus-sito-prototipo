@@ -210,8 +210,8 @@ html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent
 
 /* accanto alla L: salta l'introduzione */
 .salta {
-  left: calc(50% + 41vh); top: 50%; margin-top: -12px; white-space: nowrap;
-  font-family: 'EB Garamond', serif; font-style: italic; font-size: 19px; letter-spacing: .04em;
+  left: calc(50% + 47vh); top: 50%; margin-top: -13px; white-space: nowrap; /* dal 12/11 più staccata dalla bolla (prima 41vh) */
+  font-family: 'EB Garamond', serif; font-style: italic; font-size: 21px; /* dal 12/11, prima 19px */ letter-spacing: .04em;
   color: var(--crema); text-decoration: none; padding: 8px 0;
   border-bottom: 1px solid rgba(245, 228, 203, .3);
   transition: border-color .6s;
@@ -220,7 +220,7 @@ html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent
 .salta:hover { border-color: rgba(245, 228, 203, .9); }
 .salta:hover i { transform: translateX(6px); }
 /* in verticale non c'è spazio di fianco: sta sopra il titolo, in alto a destra della bolla */
-@media (max-aspect-ratio: 1/1) { .salta { left: auto; right: 6vw; top: 14vh; margin-top: 0; font-size: 17px; } }
+@media (max-aspect-ratio: 1/1) { .salta { left: auto; right: 6vw; top: 11vh; margin-top: 0; font-size: 19px; } }
 
 /* ingresso: la linea sottile si riempie mentre arrivano i modelli; "entra" compare quando è tutto pronto */
 .carica { width: 120px; height: 1px; background: rgba(245, 228, 203, .15); margin-top: 40px; overflow: hidden; transition: opacity 1s; }

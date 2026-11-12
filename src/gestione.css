@@ -94,3 +94,7 @@ tbody tr:hover { background: rgba(245, 228, 203, .05); }
   .due { grid-template-columns: 1fr; }
   td:nth-child(n+5), th:nth-child(n+5) { display: none; }
 }
+
+/* dal 12/11: dalla schermata di accesso si torna al sito */
+.indietro { justify-self: start; margin-top: 4px; font-size: 14px; color: inherit; opacity: .75; text-decoration: none; padding: 8px 0; }
+.indietro:hover { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
