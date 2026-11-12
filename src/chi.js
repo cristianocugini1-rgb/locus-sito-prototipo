@@ -88,15 +88,25 @@ const reveal = new IntersectionObserver((entries) => {
 $$('[data-r], [data-split]').forEach((el) => reveal.observe(el));
 
 /* ------------------------------------------------------------------ */
-/* il futuro: quanto manca, e gli appuntamenti passati si spengono      */
+/* il futuro: gli appuntamenti in ordine, dal più vicino                */
+/* REGOLA (Cristiano, 12/11/2026): il primo è quello che arriva a breve; */
+/* quelli già passati spariscono da questa sezione, da soli, ogni giorno.*/
+/* Gli appuntamenti senza data (data-date assente) restano in fondo.     */
 /* ------------------------------------------------------------------ */
 const today = new Date(); today.setHours(0, 0, 0, 0);
-$$('#upcoming [data-date]').forEach((a) => {
-  const d = new Date(a.dataset.date + 'T00:00:00');
-  const days = Math.round((d - today) / 86400000);
+const upcoming = $('#upcoming');
+const giorno = (a) => new Date(a.dataset.date + 'T00:00:00');
+const datati = $$('#upcoming [data-date]').filter((a) => {
+  if (giorno(a) >= today) return true;
+  a.remove(); // passato: fuori dalla sezione
+  return false;
+}).sort((x, y) => giorno(x) - giorno(y));
+const senzaData = $$('#upcoming > article:not([data-date])');
+[...datati, ...senzaData].forEach((a) => upcoming.appendChild(a));
+datati.forEach((a) => {
+  const days = Math.round((giorno(a) - today) / 86400000);
   const c = $('.count', a);
-  if (days < 0) a.classList.add('past');
-  else if (days === 0) c.textContent = 'oggi';
+  if (days === 0) c.textContent = 'oggi';
   else if (days === 1) c.textContent = 'domani';
   else if (days <= 30) c.textContent = `tra ${days} giorni`;
 });
