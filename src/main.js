@@ -989,8 +989,9 @@ function battisteroSolido(N) {
   return { pos, nor };
 }
 // stelle del Battistero di luce: dall'11/11 sera il doppio (prima 18.000), ?stelle=50000 per provare altri numeri
-// dal 12/11 sera meno della metà: con 61.200 pallini il sito andava a scatti (?stelle=61200 per rivedere i pieni)
-const STELLE_BASE = LEGGERO ? 7000 : small ? 11000 : 20000;
+// dal 12/11 sera meno della metà: con 61.200 pallini il sito andava a scatti (?stelle=61200 per rivedere i pieni);
+// poi, scelta di Cristiano, gli stessi numeri di prima del 10/11: 18.000 pallini sul computer, 9.000 sui telefoni
+const STELLE_BASE = LEGGERO ? 5000 : small ? 7500 : 15000;
 // dal 12/11 le stelle diventano pallini rossi di Locus (tondi netti, non aloni di luce); ?grani=luce riporta le stelle
 const PALLINI_ROSSI = !BATT_SOLIDO && Q.get('grani') !== 'luce';
 // con i pallini rossi il 70% di punti in più, così le linee spesse restano piene
