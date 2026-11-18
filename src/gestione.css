@@ -86,6 +86,14 @@ tbody tr:hover { background: rgba(245, 228, 203, .05); }
 .numeri span { font-size: 12px; opacity: .7; }
 .giorni { display: flex; align-items: flex-end; gap: 4px; height: 140px; border-bottom: 1px solid var(--linea); }
 .giorni i { flex: 1; background: var(--vivo); min-height: 1px; position: relative; }
+/* dal 18/11: il numero di visite sopra ogni barra (con 90 giorni le barre sono troppo strette: resta il passaggio del mouse) */
+.giorni { margin-top: 26px; }
+.giorni i b { display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); padding-bottom: 4px; font-weight: 600; font-size: 12px; line-height: 1; font-style: normal; white-space: nowrap; }
+@media (max-width: 700px) { .giorni i b { font-size: 9px; } }
+.giorni.con-numeri i b { display: block; }
+.giorni i b.zero { opacity: .35; }
+.giorni.con-numeri i:hover::after { bottom: calc(100% + 20px); }
+.parte-registro { margin-top: 56px; padding-top: 32px; border-top: 1px solid var(--linea); }
 .giorni i:hover::after { content: attr(data-t); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); font-style: normal; font-size: 12px; white-space: nowrap; background: var(--nero); padding: 3px 6px; }
 
 /* dal 12/11: statistiche estese, eventi, richieste di tessera */

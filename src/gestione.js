@@ -75,8 +75,7 @@ async function entra() {
 const SCHEDE = [
   { id: 'articoli', nome: 'Articoli', livelli: ['redazione', 'completo'], apri: () => listaArticoli() },
   { id: 'eventi', nome: 'Eventi', livelli: ['redazione', 'completo'], apri: () => eventi() },
-  { id: 'richieste', nome: 'Richieste', livelli: ['completo'], apri: () => richieste() },
-  { id: 'tessere', nome: 'Tessere', livelli: ['completo'], apri: () => registro() },
+  { id: 'tessere', nome: 'Tessere', livelli: ['completo'], apri: () => tessere() },
   { id: 'statistiche', nome: 'Statistiche', livelli: ['completo'], apri: () => statistiche() },
   { id: 'persone', nome: 'Persone', livelli: ['completo'], apri: () => persone() },
 ];
@@ -95,7 +94,8 @@ function costruisciSchede() {
     b.onclick = () => { nav.querySelectorAll('button').forEach((x) => x.classList.toggle('su', x === b)); location.hash = s.id; s.apri(); };
     nav.appendChild(b);
   });
-  const dalLink = mie.findIndex((s) => s.id === location.hash.slice(1));
+  const cercata = location.hash.slice(1) === 'richieste' ? 'tessere' : location.hash.slice(1); // le vecchie schede Richieste ora stanno in Tessere
+  const dalLink = mie.findIndex((s) => s.id === cercata);
   nav.children[Math.max(0, dalLink)].click();
   aggiornaConteggio();
 }
@@ -247,9 +247,9 @@ const CAMPI_TESSERA = [
 ];
 const filtri = { anno: annoOra, stato: 'tutte', cerca: '' };
 
-async function registro() {
-  vista.innerHTML = `
-    <div class="testa"><h2>Tessere</h2>
+async function registro(dove = vista) {
+  dove.innerHTML = `
+    <div class="testa"><h2>Registro delle tessere</h2>
       <div class="strumenti">
         <label>Anno<select id="f-anno"></select></label>
         <label>Stato<select id="f-stato">${['tutte', 'in attesa', 'attiva', 'scaduta', 'respinta'].map((s) => `<option ${s === filtri.stato ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
@@ -289,7 +289,7 @@ async function registro() {
     $('#t-elenco').querySelectorAll('tr[data-id]').forEach((tr) => { tr.onclick = () => tessera(righe.find((r) => r.id === tr.dataset.id)); });
   }
   registro.ricarica = carica;
-  carica();
+  await carica();
 }
 
 function tessera(r) {
@@ -473,7 +473,7 @@ async function statistiche() {
       <div><b>${ingressi[0] ? Math.round((100 * daTelefono) / ingressi[0]) : 0}%</b><span>delle visite da telefono</span></div></div>
 
     <h3>Visite al giorno</h3>
-    <div class="giorni">${giorni.map(([g, n]) => `<i style="height:${(100 * n) / maxG}%" data-t="${etichetta(g)}: ${n}"></i>`).join('')}</div>
+    <div class="giorni${giorni.length <= 31 ? ' con-numeri' : ''}">${giorni.map(([g, n]) => `<i style="height:${(100 * n) / maxG}%" data-t="${etichetta(g)}: ${n}"><b class="${n ? '' : 'zero'}">${n}</b></i>`).join('')}</div>
     <div class="asse"><span>${etichetta(giorni[0][0])}</span><span>oggi</span></div>
 
     <div class="colonne-stat">
@@ -620,12 +620,21 @@ const apriMail = (r, tipo) => {
   location.href = `mailto:${encodeURIComponent(r.email)}?subject=${encodeURIComponent(oggetto)}&body=${encodeURIComponent(corpo)}`;
 };
 
-async function richieste() {
-  vista.innerHTML = `<div class="testa"><div><h2>Richieste di tessera</h2>
+// Dal 18/11/2026 richieste e registro stanno nella stessa scheda, Tessere: sopra le richieste, sotto il registro.
+// Dopo ogni azione si ridisegnano tutte e due, restando allo stesso punto della pagina.
+async function tessere() {
+  const y = scrollY;
+  vista.innerHTML = '<div id="parte-richieste"></div><div id="parte-registro" class="parte-registro"></div>';
+  await Promise.all([richieste($('#parte-richieste')), registro($('#parte-registro'))]);
+  registro.ricarica = tessere; // la scheda di una tessera, salvata o chiusa, ridisegna tutte e due le parti
+  scrollTo(0, y);
+}
+
+async function richieste(dove = vista) {
+  dove.innerHTML = `<div class="testa"><div><h2>Richieste di tessera</h2>
     <p class="aiuto">Arrivano dal modulo in Chi siamo. Si scrive con i dati per pagare, si aspetta il pagamento, si attiva: il numero di tessera lo dà l'archivio, in ordine.</p></div></div>
     ${DATI_PAGAMENTO.includes('[da inserire]') ? '<p class="avviso">Nelle mail mancano ancora IBAN e PayPal veri: finché non ci sono, controlla il testo prima di inviare.</p>' : ''}
     <div id="r-box">Carico…</div>`;
-  registro.ricarica = richieste; // la scheda completa, chiusa, torna qui
   const [att, tutte] = await Promise.all([
     sb.from('tessere').select('*').eq('stato', 'in attesa').order('data_richiesta'),
     sb.from('tessere').select('*').order('data_ammissione', { ascending: false, nullsFirst: false }),
@@ -678,7 +687,7 @@ async function richieste() {
           apriMail(r, a);
           const { error } = await sb.from('tessere').update({ contattata_il: oggi() }).eq('id', r.id);
           if (error) return scrivi(msg, spiegaErrore(error), 'no');
-          setTimeout(richieste, 600);
+          setTimeout(tessere, 600);
         } else if (a === 'pagata') {
           el.querySelector('.r-paga').hidden = false;
         } else if (a === 'attiva') {
@@ -686,7 +695,7 @@ async function richieste() {
           const { data, error } = await sb.from('tessere').update({ stato: 'attiva', metodo_pagamento: metodo, data_pagamento: oggi() }).eq('id', r.id).select('numero').single();
           if (error) return scrivi(msg, spiegaErrore(error), 'no');
           scrivi(msg, `Attiva: tessera n. ${data.numero}.`, 'ok');
-          setTimeout(richieste, 900);
+          setTimeout(tessere, 900);
         } else if (a === 'benvenuto') {
           apriMail(r, 'benvenuto');
         } else if (a === 'scheda') {
@@ -695,7 +704,7 @@ async function richieste() {
           if (!confirm(`Respingere la richiesta di ${r.nome} ${r.cognome}? Resta nel registro come "respinta".`)) return;
           const { error } = await sb.from('tessere').update({ stato: 'respinta' }).eq('id', r.id);
           if (error) return scrivi(msg, spiegaErrore(error), 'no');
-          richieste();
+          tessere();
         }
       };
     });
@@ -704,7 +713,7 @@ async function richieste() {
 
 // il numero di richieste in attesa, accanto al nome della scheda
 async function aggiornaConteggio(n) {
-  const b = [...$('#schede').children].find((x) => x.dataset.id === 'richieste');
+  const b = [...$('#schede').children].find((x) => x.dataset.id === 'tessere');
   if (!b) return;
   if (n === undefined) {
     const { count } = await sb.from('tessere').select('id', { count: 'exact', head: true }).eq('stato', 'in attesa');
