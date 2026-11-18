@@ -8,16 +8,16 @@ export const FORMATI = {
   meetup: {
     kicker: 'Il primo sabato del mese',
     title: 'Il Meet Up',
-    lead: "La porta d'ingresso di Locus: un appuntamento al mese, aperto a tutti.",
-    about: "Il Meet Up è l'appuntamento da cui si entra in Locus. Il primo sabato del mese, aperto a tutti: ci si conosce, si lavora ai tavoli insieme ai soci e chi vuole resta.",
+    lead: "La porta d'ingresso di Locus: un appuntamento al mese aperto a tutti.",
+    about: "Il Meet Up è l'appuntamento da cui si entra in Locus. Si tiene il primo sabato del mese ed è aperto a tutti. Ci si conosce, si lavora ai tavoli insieme ai soci e chi vuole può restare.",
     cover: img('meetup.jpg'),
     stepsTitle: 'Come funziona',
     steps: [
       ['Ci si conosce', 'Locus si presenta a chi arriva per la prima volta: chi siamo, cosa facciamo, come si partecipa.'],
       ['Si lavora insieme', 'Soci e nuovi arrivati si dividono in tavoli di lavoro e chiudono le attività nella stessa giornata.'],
-      ['Si resta', 'Chi vuole si tessera, entra tra i volontari o propone un progetto coerente con la missione di Locus.'],
+      ['Si resta', 'Chi vuole può tesserarsi, unirsi ai volontari o proporre un progetto coerente con la missione di Locus.'],
     ],
-    quote: "È il passaggio tra chi ci segue e chi costruisce Locus: qui chi arriva da Instagram o da un format diventa parte della comunità.",
+    quote: "È il passaggio tra chi ci segue e chi costruisce Locus: qui chi arriva da Instagram o da un format entra a far parte della comunità.",
     dates: [
       ['7 novembre 2026', 'Meet Up: Conosci. Incontra. Costruisci.', 'Sala Civica Cittadella, via Antonio Bizzozero 15.'],
     ],
@@ -29,16 +29,16 @@ export const FORMATI = {
   bolla: {
     kicker: '150 persone a serata',
     title: 'La Grande Bolla',
-    lead: 'Conversazioni urbane per uscire dalla propria bolla. Una serata in cinque tempi.',
-    about: "La Grande Bolla è una serata di conversazioni urbane, per uscire dalla propria bolla. Ogni sera ha un tema. Ci si siede a tavoli di persone che di solito non si incontrano, ognuno con un facilitatore, e si parte da un menù di tre posizioni semplificate. Poi la discussione sale sul palco: tre ospiti e un moderatore. Alla fine il microfono gira in sala e la parola torna a chi ascolta. Sei edizioni l'anno, circa 150 persone a serata.",
+    lead: 'Una serata di conversazione per uscire dalla propria bolla, divisa in cinque momenti.',
+    about: "La Grande Bolla è una serata di conversazione pensata per uscire dalla propria bolla. Ogni edizione ha un tema. Ci si siede a tavoli misti, con persone che di solito non si incontrano e un facilitatore per ogni tavolo, e si parte da tre posizioni semplificate sul tema. Poi la discussione si sposta sul palco con tre ospiti e un moderatore. Alla fine il microfono passa al pubblico. Si tengono sei edizioni l'anno, con circa 150 persone a serata.",
     cover: img('ospiti-bolla.jpg'),
-    stepsTitle: 'Una serata in cinque tempi',
+    stepsTitle: 'Una serata in cinque momenti',
     steps: [
       ['Un tema per sera', ''],
-      ['I tavoli', 'Persone che di solito non si incontrano, ognuno con un facilitatore.'],
+      ['I tavoli', 'Persone che di solito non si incontrano, con un facilitatore per tavolo.'],
       ['Il menù', 'Tre posizioni semplificate da cui partire.'],
       ['Il palco', 'Tre ospiti e un moderatore.'],
-      ['Il microfono', 'Gira in sala.'],
+      ['Il microfono', 'Passa al pubblico.'],
     ],
     numbers: [
       ['6', "edizioni l'anno"],
@@ -59,15 +59,15 @@ export const FORMATI = {
   debate: {
     kicker: 'Da novembre 2026',
     title: 'Speed Debate',
-    lead: 'Conoscersi discutendo, dopocena, a tavolini da due.',
-    about: "Lo Speed Debate è un modo di conoscersi discutendo. Dopocena, a tavolini da due: tre round da quindici minuti, ognuno con una persona nuova. A ogni round si gira una carta con una domanda su cui prendere posizione, e i telefoni restano fuori dal gioco. Alla fine due ospiti con idee opposte si sfidano sul palco. Il primo appuntamento è a novembre 2026.",
+    lead: 'Un dopocena per conoscersi discutendo, seduti a tavolini da due.',
+    about: "Lo Speed Debate è un modo per conoscersi discutendo. Dopo cena ci si siede a tavolini da due e si fanno tre round da quindici minuti, ognuno con una persona nuova. A ogni round si gira una carta con una domanda su cui prendere posizione, mentre i telefoni restano da parte. Alla fine due ospiti con idee opposte si confrontano sul palco. Il primo appuntamento è a novembre 2026.",
     cover: img('evento-tavoli.jpg'),
     numbersList: true,
     numbersTitle: 'Le regole',
     numbers: [
       ['0', "telefoni in vista: all'ingresso li mascheriamo"],
       ['1', 'carta per round, con una domanda su cui prendere posizione'],
-      ['2', 'ospiti con idee opposte si sfidano sul palco, alla fine'],
+      ['2', 'ospiti con idee opposte, che alla fine si confrontano sul palco'],
       ['3', 'round da 15 minuti, ognuno con una persona nuova'],
     ],
     photos: [img('evento-tavoli.jpg'), img('serata-schermo.jpg')],
@@ -78,8 +78,8 @@ export const FORMATI = {
   giovedi: {
     kicker: 'Serate aperte',
     title: 'Il Giovedì del Locus',
-    lead: 'Una serata senza fretta, per conoscersi e ritrovarsi. Musica, ospiti, e tante birrette insieme.',
-    about: 'Il Giovedì del Locus è la serata più informale: musica, ospiti e birre, per conoscersi e ritrovarsi senza fretta.',
+    lead: 'Una serata tranquilla per conoscersi e ritrovarsi, con musica, ospiti e qualcosa da bere insieme.',
+    about: 'Il Giovedì del Locus è la serata più informale: musica, ospiti e qualcosa da bere, per conoscersi e ritrovarsi senza fretta.',
     cover: img('giovedi-talk-drinks.jpg'),
     dates: [
       ['19 marzo 2026', 'Il primo Giovedì del Locus', 'La serata del lancio. Borgo Santa Brigida 5A.'],

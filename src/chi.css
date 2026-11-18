@@ -92,7 +92,7 @@ html.menu-open, body.menu-open { overflow: hidden; overscroll-behavior: none; }
 }
 
 /* tipografia */
-.kicker { font-size: 12px; letter-spacing: .28em; text-transform: uppercase; color: var(--rosso-vivo); margin: 0 0 22px; }
+.kicker { font-size: clamp(15px, 1.25vw, 18px); letter-spacing: .26em; text-transform: uppercase; color: var(--rosso-vivo); margin: 0 0 22px; }
 .display, .title {
   font-family: 'Anton', sans-serif; font-weight: 400; text-transform: uppercase; line-height: .9; margin: 0;
   letter-spacing: .005em;
@@ -380,9 +380,58 @@ figcaption { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1
 .sh-cta a:hover, .follow:hover { background: var(--crema); color: var(--nero); }
 
 /* ================================================================== */
+/* come si entra (presentazione del direttivo, 12/11)                  */
+/* ================================================================== */
+.ingresso { --c1: rgba(245, 228, 203, .45); --c2: var(--crema); --c3: var(--rosso-vivo); --c4: var(--lime); }
+.ing-struttura { display: grid; grid-template-columns: 1fr 1.1fr; gap: clamp(30px, 6vw, 100px); margin-top: 70px; align-items: center; }
+/* i livelli come parentesi del logo, una dentro l'altra */
+.ing-cerchi { max-width: 520px; width: 100%; justify-self: center; }
+.ing-c { position: relative; padding: clamp(38px, 4.6vw, 56px) clamp(22px, 3.2vw, 42px) clamp(24px, 3.2vw, 38px); color: var(--cc); }
+.ing-c.c1 { --cc: var(--c1); } .ing-c.c2 { --cc: var(--c2); } .ing-c.c3 { --cc: var(--c3); } .ing-c.c4 { --cc: var(--c4); }
+.ing-c > i { position: absolute; width: clamp(24px, 3vw, 40px); height: clamp(24px, 3vw, 40px); border: 0 solid var(--cc); }
+.ing-c > i:nth-child(1) { top: 0; left: 0; border-width: 4px 0 0 4px; }
+.ing-c > i:nth-child(2) { top: 0; right: 0; border-width: 4px 4px 0 0; }
+.ing-c > i:nth-child(3) { bottom: 0; left: 0; border-width: 0 0 4px 4px; }
+.ing-c > i:nth-child(4) { bottom: 0; right: 0; border-width: 0 4px 4px 0; }
+.ing-c > span { position: absolute; top: clamp(10px, 1.4vw, 16px); left: 0; right: 0; text-align: center; font-size: 10px; letter-spacing: .26em; text-transform: uppercase; }
+.ing-c.c4 { padding: clamp(22px, 3vw, 34px) 10px; text-align: center; }
+.ing-c.c4 b { font-family: 'Anton', sans-serif; font-weight: 400; text-transform: uppercase; font-size: clamp(24px, 2.6vw, 36px); letter-spacing: .02em; }
+.ing-porta { margin: 22px 0 0; text-align: center; font-family: 'EB Garamond', serif; font-style: italic; font-size: 19px; opacity: .8; }
+.ing-livelli { list-style: none; padding: 0; margin: 0; border-top: 2px solid var(--rosso-vivo); }
+.ing-livelli li { padding: 20px 0 20px 22px; border-bottom: 1px solid rgba(245, 228, 203, .16); position: relative; }
+.ing-livelli li::before { content: ''; position: absolute; left: 0; top: 26px; width: 8px; height: 8px; background: var(--cc); }
+.ing-livelli .l1 { --cc: var(--c1); } .ing-livelli .l2 { --cc: var(--c2); } .ing-livelli .l3 { --cc: var(--c3); } .ing-livelli .l4 { --cc: var(--c4); }
+.ing-livelli h3 { color: var(--cc); margin-bottom: 6px; }
+.ing-livelli p { margin: 0; opacity: .82; }
+.ing-sub { margin-top: 16vh; }
+.ing-passi { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+.ing-passi li { padding: 24px 20px 28px; border-top: 2px solid var(--rosso-vivo); background: rgba(20, 4, 4, .45); }
+.ing-passi li:last-child { border-top-color: var(--lime); }
+.ing-passi b { display: block; font-family: 'EB Garamond', serif; font-style: italic; font-weight: 400; font-size: 20px; opacity: .55; margin-bottom: 14px; }
+.ing-passi h3 { font-family: 'Anton', sans-serif; font-weight: 400; text-transform: uppercase; font-size: 24px; line-height: 1.05; margin: 0 0 12px; }
+.ing-passi p { margin: 0; font-size: 15px; opacity: .82; }
+.ing-mese { margin: 40px 0 0; max-width: 62ch; font-family: 'EB Garamond', serif; font-size: clamp(19px, 1.7vw, 24px); line-height: 1.4; }
+.ing-mese span { color: var(--rosso-vivo); font-style: italic; }
+.ing-porte { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(20px, 3vw, 44px); }
+.ing-porte li { padding-top: 22px; border-top: 1px solid rgba(245, 228, 203, .3); }
+.ing-porte h3 { font-family: 'Anton', sans-serif; font-weight: 400; text-transform: uppercase; font-size: 26px; line-height: 1.05; margin: 0 0 10px; }
+.ing-porte li:nth-child(2) h3 { color: var(--rosso-vivo); }
+.ing-porte li:nth-child(3) h3 { color: var(--lime); }
+.ing-porte p { margin: 0; opacity: .82; }
+@media (max-width: 1180px) { .ing-passi { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 860px) {
+  .ing-struttura { grid-template-columns: 1fr; margin-top: 44px; }
+  .ing-passi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ing-porte { grid-template-columns: 1fr; }
+  .ing-sub { margin-top: 10vh; }
+}
+@media (max-width: 560px) { .ing-passi { grid-template-columns: 1fr; } .ing-c > span { font-size: 9px; letter-spacing: .18em; } }
+
+/* ================================================================== */
 /* tesserati                                                           */
 /* ================================================================== */
 .join { background: linear-gradient(180deg, transparent, rgba(128, 2, 0, .18) 30%, transparent); }
+.join-perche { max-width: 60ch; margin: 26px 0 0; font-size: 17px; line-height: 1.55; opacity: .85; padding-left: 20px; border-left: 2px solid var(--lime); }
 .join-grid { display: grid; grid-template-columns: 1fr 1.25fr; gap: clamp(30px, 6vw, 100px); margin-top: 70px; align-items: start; }
 .join-why { list-style: none; padding: 0; margin: 0; display: grid; border-top: 1px solid rgba(245, 228, 203, .2); }
 .join-why li { display: grid; grid-template-columns: 54px 1fr; gap: 14px; padding: 24px 0; border-bottom: 1px solid rgba(245, 228, 203, .2); }

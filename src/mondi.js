@@ -13,8 +13,8 @@ const MODELLI = `${import.meta.env.BASE_URL}modelli/`;
 const PAGINE = [
   { testata: 'Il problema', titolo: 'Il vuoto.', corpo: ['Una società spezzata, una generazione sola, una collettività anestetizzata.', 'La frattura. 4 su 400 i deputati sotto i 30 anni eletti nel 2022. Una politica senza ricambio non trova le parole per i temi di chi ha meno di 35 anni.'], num: 12 },
   { testata: 'La solitudine', titolo: '20,5%', corpo: ['dei 16-34enni si è sentito solo nelle ultime quattro settimane. Nel 2018 era l’11,7%.', 'L’anestesia. 35,4% dei 18-24enni non si informa mai di politica. Fino ai 34 anni, solo uno su quattro ne parla ogni settimana.'], num: 13 },
-  { testata: 'La risposta', titolo: 'Riempire il vuoto.', corpo: ['Un media. Una comunità. Una voce.', 'Conosci. Casa, lavoro, salute mentale, costo della vita, clima: la politica non ne parla. Noi li portiamo nel dibattito, con i dati su Parma.'], num: 27 },
-  { testata: 'Incontra', titolo: 'I format.', corpo: ['Serate dal vivo che rompono l’isolamento: persone diverse si confrontano e restano in contatto. Si entra dal Meet Up, il primo sabato del mese.', 'Costruisci. Trasformiamo istanze e bisogni della comunità in proposte, e le portiamo fino a chi decide.'], num: 28 },
+  { testata: 'La risposta', titolo: 'Riempire il vuoto.', corpo: ['Un media. Una comunità. Una voce.', 'Conosci. La politica parla poco di casa, lavoro, salute mentale, costo della vita e clima. Locus porta questi temi nel dibattito pubblico partendo dai dati su Parma.'], num: 27 },
+  { testata: 'Incontra', titolo: 'I format.', corpo: ['Serate dal vivo in cui persone diverse si confrontano e restano in contatto, per uscire dall’isolamento. Il primo passo è il Meet Up, il primo sabato del mese.', 'Costruisci. Raccogliamo i bisogni e le richieste della comunità, li trasformiamo in proposte e li portiamo fino a chi decide.'], num: 28 },
 ];
 
 // grana della carta: fibre leggere su un avorio caldo
