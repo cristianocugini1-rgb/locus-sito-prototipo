@@ -45,7 +45,7 @@ main, .foot { position: relative; z-index: 2; }
 html.menu-open, body.menu-open { overflow: hidden; overscroll-behavior: none; }
 .logo {
   /* dal 18/11 logo bianco trasparente, più grande e senza fondo rosso (prima 28 px di scritta su rosso) */
-  margin-right: auto; display: block; height: clamp(38px, 3.6vw, 54px); padding: 0; box-sizing: border-box;
+  margin-right: auto; display: block; height: clamp(46px, 4.6vw, 70px); padding: 0; box-sizing: border-box;
   /* è anche la porta del gestionale (pressione lunga): sul telefono niente menu, selezione o anteprima */
   -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation;
 }
