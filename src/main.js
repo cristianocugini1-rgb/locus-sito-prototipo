@@ -425,6 +425,7 @@ hero.add(brackets);
 // Dal 10/11 sera riflette la stanza di Locus fatta in Blender (blender/stanza.py, public/hdri/stanza-locus.hdr):
 // come una bolla vera, il riflesso è quasi invisibile al centro e forte sul bordo, sulla faccia davanti e, capovolto,
 // su quella dietro. Scelta nella pagina prove-bolle.html. Con ?riflesso=disegnato torna la bolla di prima.
+const STANZA_HDR = new URLSearchParams(location.search).get('stanza') === 'hdr'; // per confrontare con il file HDR di prima (1,1 MB)
 const RIFLESSO_DISEGNATO = new URLSearchParams(location.search).get('riflesso') === 'disegnato';
 if (!RIFLESSO_DISEGNATO) {
   const stanzaUni = { uMap: { value: null } };
@@ -439,18 +440,24 @@ if (!RIFLESSO_DISEGNATO) {
         void main(){
           vec3 d = normalize(vW);
           vec2 uv = vec2(atan(d.z, d.x) / 6.2831853 + 0.5, 0.5 - asin(clamp(d.y, -1.0, 1.0)) / 3.1415927);
-          // abbassata di un terzo e con le lampade frenate: più sapone che vetro rosso, niente bagliore sul bordo
-          gl_FragColor = vec4(min(texture2D(uMap, uv).rgb * 0.62, vec3(1.6)), 1.0);
+          // abbassata di un terzo e con le lampade frenate: più sapone che vetro rosso, niente bagliore sul bordo.
+          // Dal 18/11 la stanza arriva già frenata in un WebP da 49 KB (scripts/stanza-da-hdr.py): valore = (colore^2) * 1.6
+          ${STANZA_HDR ? 'gl_FragColor = vec4(min(texture2D(uMap, uv).rgb * 0.62, vec3(1.6)), 1.0);'
+            : 'vec3 e = texture2D(uMap, uv).rgb; gl_FragColor = vec4(e * e * 1.6, 1.0);'}
         }`,
     })
   ));
-  new HDRLoader().setDataType(THREE.FloatType).load(`${import.meta.env.BASE_URL}hdri/stanza-locus.hdr`, (tex) => {
+  const fotografa = (tex) => {
     tex.flipY = false;
+    tex.generateMipmaps = false; // senza mipmap, come l'HDR: niente cucitura dove l'immagine si chiude
+    tex.minFilter = THREE.LinearFilter;
     tex.needsUpdate = true;
     stanzaUni.uMap.value = tex;
     new THREE.CubeCamera(0.1, 100, stanzaRT).update(renderer, stanza); // la stanza è ferma: basta fotografarla una volta
     tex.dispose();
-  });
+  };
+  if (STANZA_HDR) new HDRLoader().setDataType(THREE.FloatType).load(`${import.meta.env.BASE_URL}hdri/stanza-locus.hdr`, fotografa);
+  else new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}hdri/stanza-locus.webp`, fotografa);
 }
 const bubbleUniforms = { uTime: { value: 0 }, uWobble: { value: 1 }, uPop: { value: 0 }, uEnv: { value: stanzaRT.texture } };
 const FS_RIFLESSO = /* glsl */ `

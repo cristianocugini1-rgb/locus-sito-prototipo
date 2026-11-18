@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import Lenis from 'lenis';
 import { FORMATI } from './formati.js';
 import { storia } from './storia.js';
@@ -175,28 +174,50 @@ $$('.card').forEach((c) => {
 /* ------------------------------------------------------------------ */
 /* fondo vivo: grani di luce e un alone che cambia colore con la sezione */
 /* ------------------------------------------------------------------ */
+// Dal 18/11/2026 senza Three.js (la pagina scarica circa 160 KB in meno): WebGL diretto, stessi shader di prima.
+// Three passava i colori allo shader in valori lineari: qui si fa la stessa conversione, così il fondo resta identico.
 const canvas = $('#bg');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
-renderer.setSize(innerWidth, innerHeight);
-const scene = new THREE.Scene();
-const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+const gl = canvas.getContext('webgl', { antialias: false, alpha: false });
+const lineare = (hex) => [1, 3, 5].map((i) => { const c = parseInt(hex.slice(i, i + 2), 16) / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
 const TONES = [
-  new THREE.Color('#800200'), // rosso Locus
-  new THREE.Color('#9a1a06'),
-  new THREE.Color('#b8400a'), // verso l'arancio degli eventi
-  new THREE.Color('#d0560c'),
+  lineare('#800200'), // rosso Locus
+  lineare('#9a1a06'),
+  lineare('#b8400a'), // verso l'arancio degli eventi
+  lineare('#d0560c'),
 ];
 const tone = { target: 0, value: 0 };
-const bgUni = {
-  uTime: { value: 0 }, uRes: { value: new THREE.Vector2(innerWidth, innerHeight) },
-  uMouse: { value: new THREE.Vector2(0.5, 0.5) }, uScroll: { value: 0 },
-  uColor: { value: TONES[0].clone() },
-};
-scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
-  uniforms: bgUni,
-  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
-  fragmentShader: /* glsl */ `
+const pixel = Math.min(devicePixelRatio, 1.5);
+const bgUni = { uTime: 0, uScroll: 0, uMouse: [0.5, 0.5], uColor: TONES[0].slice() };
+const ptUni = { uTime: 0, uScroll: 0, uVel: 0 };
+
+function programma(vs, fs) {
+  const p = gl.createProgram();
+  [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]].forEach(([tipo, src]) => {
+    const sh = gl.createShader(tipo);
+    gl.shaderSource(sh, 'precision highp float;\n' + src);
+    gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) console.warn(gl.getShaderInfoLog(sh));
+    gl.attachShader(p, sh);
+  });
+  gl.linkProgram(p);
+  return p;
+}
+function attributo(p, nome, dati, n) {
+  const b = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, b);
+  gl.bufferData(gl.ARRAY_BUFFER, dati, gl.STATIC_DRAW);
+  return { loc: gl.getAttribLocation(p, nome), b, n };
+}
+function usa(attr) {
+  for (const a of attr) { gl.bindBuffer(gl.ARRAY_BUFFER, a.b); gl.enableVertexAttribArray(a.loc); gl.vertexAttribPointer(a.loc, a.n, gl.FLOAT, false, 0, 0); }
+}
+
+let fondo = null, grani = null;
+if (gl) {
+  // l'alone: un rettangolo che copre lo schermo
+  const pf = programma(
+    `attribute vec2 position; varying vec2 vUv; void main(){ vUv = position * 0.5 + 0.5; gl_Position = vec4(position, 0.0, 1.0); }`,
+    /* glsl */ `
     uniform float uTime, uScroll; uniform vec2 uRes, uMouse; uniform vec3 uColor;
     varying vec2 vUv;
     float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -214,31 +235,58 @@ scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial
       vec3 base = vec3(0.13, 0.024, 0.02);
       vec3 col = base + uColor * (g1 * g1 * 0.42 + g2 * g2 * 0.56) * (0.75 + n * 0.5);
       gl_FragColor = vec4(col, 1.0);
-    }`,
-})));
-// grani che salgono piano, e fuggono al passaggio dello scroll
-const N = small ? 500 : 1100;
-const pg = new THREE.BufferGeometry();
-const pp = new Float32Array(N * 3);
-const ps = new Float32Array(N);
-for (let i = 0; i < N; i++) { pp.set([Math.random() * 2 - 1, Math.random() * 2 - 1, 0], i * 3); ps[i] = Math.random(); }
-pg.setAttribute('position', new THREE.BufferAttribute(pp, 3));
-pg.setAttribute('aSeed', new THREE.BufferAttribute(ps, 1));
-const ptUni = { uTime: { value: 0 }, uScroll: { value: 0 }, uPixel: { value: renderer.getPixelRatio() }, uVel: { value: 0 } };
-scene.add(new THREE.Points(pg, new THREE.ShaderMaterial({
-  uniforms: ptUni, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-  vertexShader: /* glsl */ `
-    attribute float aSeed; uniform float uTime, uScroll, uPixel, uVel; varying float vA;
+    }`);
+  fondo = { p: pf, attr: [attributo(pf, 'position', new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), 2)] };
+  // grani che salgono piano, e fuggono al passaggio dello scroll
+  const N = small ? 500 : 1100;
+  const pp = new Float32Array(N * 2);
+  const ps = new Float32Array(N);
+  for (let i = 0; i < N; i++) { pp.set([Math.random() * 2 - 1, Math.random() * 2 - 1], i * 2); ps[i] = Math.random(); }
+  const pg = programma(/* glsl */ `
+    attribute vec2 position; attribute float aSeed; uniform float uTime, uScroll, uPixel, uVel; varying float vA;
     void main(){
-      vec2 p = position.xy;
+      vec2 p = position;
       p.y = mod(p.y + 1.0 + uTime * (0.006 + aSeed * 0.012) + uScroll * (0.3 + aSeed * 0.9), 2.0) - 1.0;
       p.x += sin(uTime * 0.3 + aSeed * 30.0) * 0.01;
       gl_Position = vec4(p, 0.0, 1.0);
       gl_PointSize = (1.2 + aSeed * 2.6) * uPixel * (1.0 + abs(uVel) * 0.6);
       vA = 0.25 + aSeed * 0.55;
     }`,
-  fragmentShader: `varying float vA; void main(){ float r = length(gl_PointCoord - 0.5); gl_FragColor = vec4(vec3(0.96, 0.85, 0.75) * vA * (1.0 - smoothstep(0.1, 0.5, r)), 1.0); }`,
-})));
+  `varying float vA; void main(){ float r = length(gl_PointCoord - 0.5); gl_FragColor = vec4(vec3(0.96, 0.85, 0.75) * vA * (1.0 - smoothstep(0.1, 0.5, r)), 1.0); }`);
+  grani = { p: pg, n: N, attr: [attributo(pg, 'position', pp, 2), attributo(pg, 'aSeed', ps, 1)] };
+}
+const U = (p, nome) => gl.getUniformLocation(p, nome);
+function dimensiona() {
+  canvas.width = Math.round(innerWidth * pixel);
+  canvas.height = Math.round(innerHeight * pixel);
+  canvas.style.width = innerWidth + 'px';
+  canvas.style.height = innerHeight + 'px';
+  gl?.viewport(0, 0, canvas.width, canvas.height);
+}
+dimensiona();
+function disegnaFondo() {
+  if (!gl) return;
+  gl.disable(gl.BLEND);
+  gl.useProgram(fondo.p);
+  gl.uniform1f(U(fondo.p, 'uTime'), bgUni.uTime);
+  gl.uniform1f(U(fondo.p, 'uScroll'), bgUni.uScroll);
+  gl.uniform2f(U(fondo.p, 'uRes'), innerWidth, innerHeight);
+  gl.uniform2f(U(fondo.p, 'uMouse'), ...bgUni.uMouse);
+  gl.uniform3f(U(fondo.p, 'uColor'), ...bgUni.uColor);
+  usa(fondo.attr);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+  gl.disableVertexAttribArray(fondo.attr[0].loc);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE); // grani che si sommano alla luce, come prima
+  gl.useProgram(grani.p);
+  gl.uniform1f(U(grani.p, 'uTime'), ptUni.uTime);
+  gl.uniform1f(U(grani.p, 'uScroll'), ptUni.uScroll);
+  gl.uniform1f(U(grani.p, 'uPixel'), pixel);
+  gl.uniform1f(U(grani.p, 'uVel'), ptUni.uVel);
+  usa(grani.attr);
+  gl.drawArrays(gl.POINTS, 0, grani.n);
+  grani.attr.forEach((a) => gl.disableVertexAttribArray(a.loc));
+}
 
 /* ------------------------------------------------------------------ */
 /* immagini in parallasse, cursore, barra di avanzamento               */
@@ -246,20 +294,20 @@ scene.add(new THREE.Points(pg, new THREE.ShaderMaterial({
 const parallax = $$('[data-speed]').map((el) => ({ el, img: $('img', el), k: +el.dataset.speed }));
 const cursor = $('#cursor');
 const cur = { x: innerWidth / 2, y: innerHeight / 2, tx: innerWidth / 2, ty: innerHeight / 2 };
-const mouseUV = new THREE.Vector2(0.5, 0.5);
+const mouseUV = [0.5, 0.5];
 addEventListener('pointermove', (e) => {
   cur.tx = e.clientX; cur.ty = e.clientY;
   // il mirino si sposta qui, subito, e non nel ciclo della scena: così non dipende dagli fps del 3D
   cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
-  mouseUV.set(e.clientX / innerWidth, 1 - e.clientY / innerHeight);
+  mouseUV[0] = e.clientX / innerWidth; mouseUV[1] = 1 - e.clientY / innerHeight;
 });
 
 addEventListener('pointerover', (e) => { cursor.classList.toggle('hot', !!e.target.closest?.('a, button, .card')); });
 
-const clock = new THREE.Clock();
+const inizio = performance.now();
 function frame(time) {
   lenis.raf(time);
-  const t = clock.getElapsedTime();
+  const t = (performance.now() - inizio) / 1000;
   const y = lenis.scroll;
   const lim = lenis.limit || 1;
   progress.style.transform = `scaleX(${(y / lim).toFixed(4)})`;
@@ -267,13 +315,13 @@ function frame(time) {
 
   tone.value = lerp(tone.value, tone.target, 0.03);
   const i0 = Math.floor(tone.value), i1 = Math.min(TONES.length - 1, i0 + 1);
-  bgUni.uColor.value.copy(TONES[i0]).lerp(TONES[i1], tone.value - i0);
-  bgUni.uTime.value = t;
-  bgUni.uMouse.value.lerp(mouseUV, 0.04);
-  bgUni.uScroll.value = y / innerHeight;
-  ptUni.uTime.value = t;
-  ptUni.uScroll.value = y / innerHeight * 0.12;
-  ptUni.uVel.value = lerp(ptUni.uVel.value, clamp(lenis.velocity / 40, -1, 1), 0.1);
+  for (let k = 0; k < 3; k++) bgUni.uColor[k] = lerp(TONES[i0][k], TONES[i1][k], tone.value - i0);
+  bgUni.uTime = t;
+  bgUni.uMouse = [lerp(bgUni.uMouse[0], mouseUV[0], 0.04), lerp(bgUni.uMouse[1], mouseUV[1], 0.04)];
+  bgUni.uScroll = y / innerHeight;
+  ptUni.uTime = t;
+  ptUni.uScroll = y / innerHeight * 0.12;
+  ptUni.uVel = lerp(ptUni.uVel, clamp(lenis.velocity / 40, -1, 1), 0.1);
 
   for (const p of parallax) {
     const r = p.el.getBoundingClientRect();
@@ -283,13 +331,12 @@ function frame(time) {
   }
 
 
-  renderer.render(scene, camera);
+  disegnaFondo();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 addEventListener('resize', () => {
-  renderer.setSize(innerWidth, innerHeight);
-  bgUni.uRes.value.set(innerWidth, innerHeight);
+  dimensiona();
 });
 
 /* ------------------------------------------------------------------ */

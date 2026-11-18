@@ -16,6 +16,9 @@
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%232b0d0c'/%3E%3Cpath d='M9 6h6v16h9v4H9z' fill='%23d0462e'/%3E%3C/svg%3E" />
+  <!-- dal 18/11: telefoni e computer che non reggono il 3D (WebGL 2, che serve a Three.js) vanno dritti a Chi siamo,
+       invece di restare fermi sull'ingresso con "entra" spento -->
+  <script>try { if (!document.createElement('canvas').getContext('webgl2')) location.replace('chi-siamo.html'); } catch (e) { location.replace('chi-siamo.html'); }</script>
   <link rel="stylesheet" href="/src/style.css" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"Locus","description":"Cultura urbana e comunità a Parma. Un media, una comunità, una voce per gli under 35.","url":"https://cristianocugini1-rgb.github.io/locus-sito-prototipo/","logo":"https://cristianocugini1-rgb.github.io/locus-sito-prototipo/img/logo-locus-bianco.png","email":"locus.parma@gmail.com","address":{"@type":"PostalAddress","addressLocality":"Parma","addressCountry":"IT"},"sameAs":["https://www.instagram.com/locus_parma"]}</script>
 </head>
