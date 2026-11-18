@@ -76,6 +76,7 @@ const SCHEDE = [
   { id: 'articoli', nome: 'Articoli', livelli: ['redazione', 'completo'], apri: () => listaArticoli() },
   { id: 'eventi', nome: 'Eventi', livelli: ['redazione', 'completo'], apri: () => eventi() },
   { id: 'tessere', nome: 'Tessere', livelli: ['completo'], apri: () => tessere() },
+  { id: 'bandi', nome: 'Bandi', livelli: ['completo'], apri: () => bandi() },
   { id: 'statistiche', nome: 'Statistiche', livelli: ['completo'], apri: () => statistiche() },
   { id: 'persone', nome: 'Persone', livelli: ['completo'], apri: () => persone() },
 ];
@@ -98,6 +99,7 @@ function costruisciSchede() {
   const dalLink = mie.findIndex((s) => s.id === cercata);
   nav.children[Math.max(0, dalLink)].click();
   aggiornaConteggio();
+  contaBandi();
 }
 
 /* ------------------------------------------------------------------ */
@@ -717,6 +719,107 @@ async function aggiornaConteggio(n) {
   if (!b) return;
   if (n === undefined) {
     const { count } = await sb.from('tessere').select('id', { count: 'exact', head: true }).eq('stato', 'in attesa');
+    n = count || 0;
+  }
+  b.querySelector('.conta')?.remove();
+  if (n) b.insertAdjacentHTML('beforeend', ` <span class="conta">${n}</span>`);
+}
+
+/* ------------------------------------------------------------------ */
+/* bandi (dal 18/11): le occasioni di finanziamento per Locus, dalla   */
+/* più vicina. Si aggiungono a mano o da un controllo automatico, che  */
+/* li lascia "da valutare". Niente cancellazioni: si scarta.           */
+/* ------------------------------------------------------------------ */
+const STATI_BANDO = ['da valutare', 'ci interessa', 'in preparazione', 'presentato', 'vinto', 'non vinto', 'scartato'];
+const CHIUSI = ['presentato', 'vinto', 'non vinto'];
+const classeBando = (s) => ({ 'ci interessa': 'attesa', 'in preparazione': 'attesa', vinto: 'attiva', scartato: 'respinta', 'non vinto': 'respinta' }[s] || '');
+
+async function bandi() {
+  vista.innerHTML = `<div class="testa"><div><h2>Bandi</h2>
+      <p class="aiuto">Dal più vicino alla scadenza. Le date con la scritta "stimata" vengono dal calendario dell'anno prima: prima di candidarsi, controllare sempre il bando ufficiale.</p></div>
+      <button class="primo" id="b-nuovo">Nuovo bando</button></div>
+    <div id="b-box">Carico…</div>`;
+  $('#b-nuovo').onclick = () => bando({ stato: 'da valutare' });
+  const { data, error } = await sb.from('bandi').select('*');
+  if (error) return ($('#b-box').textContent = spiegaErrore(error));
+  const oggiL = giornoLocale(new Date());
+  const perScadenza = (a, b) => (a.scadenza || '9999').localeCompare(b.scadenza || '9999');
+  const aperti = data.filter((b) => !CHIUSI.includes(b.stato) && b.stato !== 'scartato' && (!b.scadenza || b.scadenza >= oggiL)).sort(perScadenza);
+  const presentati = data.filter((b) => CHIUSI.includes(b.stato)).sort((a, b) => perScadenza(b, a));
+  const archivio = data.filter((b) => !aperti.includes(b) && !presentati.includes(b)).sort((a, b) => perScadenza(b, a));
+  contaBandi(data.filter((b) => b.stato === 'da valutare' && b.origine === 'automatico').length);
+  const quando = (b) => {
+    if (!b.scadenza) return '<span class="aiuto">senza data</span>';
+    const g = Math.round((new Date(b.scadenza + 'T12:00:00') - new Date(oggiL + 'T12:00:00')) / 864e5);
+    const fra = g < 0 ? '' : g === 0 ? 'oggi' : g === 1 ? 'domani' : `fra ${g} giorni`;
+    return `${dataItaliana(b.scadenza)}${b.data_stimata ? ' <span class="stato">stimata</span>' : ''}${fra ? `<br><span class="${g <= 14 ? 'tardi' : 'aiuto'}">${fra}</span>` : ''}`;
+  };
+  const tabella = (righe) => `<table><thead><tr><th>Scadenza</th><th>Bando</th><th>Stato</th><th>Chi se ne occupa</th><th>Importo</th></tr></thead><tbody>${righe.map((b) => `
+    <tr data-id="${b.id}" class="${b.stato === 'scartato' ? 'spento' : ''}"><td>${quando(b)}</td>
+    <td><b>${esc(b.titolo)}</b>${b.ente ? `<br><span class="aiuto">${esc(b.ente)}</span>` : ''}${b.origine === 'automatico' && b.stato === 'da valutare' ? ' <span class="stato ig">trovato in automatico</span>' : ''}</td>
+    <td><span class="stato ${classeBando(b.stato)}">${b.stato}</span></td><td>${esc(b.referente || '')}</td><td>${esc(b.importo || '')}</td></tr>`).join('')}</tbody></table>`;
+  $('#b-box').innerHTML = `
+    <h3>Aperti e in arrivo <span class="quanti">${aperti.length}</span></h3>${aperti.length ? tabella(aperti) : '<p class="vuoto">Nessun bando in vista.</p>'}
+    ${presentati.length ? `<h3>Presentati <span class="quanti">${presentati.length}</span></h3>${tabella(presentati)}` : ''}
+    ${archivio.length ? `<details><summary>Archivio (${archivio.length}): scaduti o scartati</summary>${tabella(archivio)}</details>` : ''}`;
+  $('#b-box').querySelectorAll('tr[data-id]').forEach((tr) => { tr.onclick = () => bando(data.find((b) => b.id === tr.dataset.id)); });
+}
+
+function bando(b) {
+  const box = document.createElement('div');
+  box.className = 'pannello';
+  const campo = (k, nome, attr = '') => `<label>${nome}<input name="${k}" ${attr} value="${esc(b[k] ?? '')}" /></label>`;
+  const area = (k, nome, h = 90) => `<label>${nome}<textarea name="${k}" maxlength="2000" style="min-height:${h}px;font:15px/1.45 'Inter',sans-serif">${esc(b[k] || '')}</textarea></label>`;
+  box.innerHTML = `<form>
+    <div class="testa"><h2>${b.id ? esc(b.titolo) : 'Nuovo bando'}</h2><button type="button" class="link" data-chiudi>chiudi</button></div>
+    ${b.origine === 'automatico' ? `<p class="avviso">Trovato dal controllo automatico il ${dataItaliana(b.trovato_il)}. Requisiti e date vanno verificati sul bando ufficiale.</p>` : ''}
+    ${campo('titolo', 'Titolo', 'required maxlength="200"')}
+    ${campo('ente', 'Ente che lo pubblica', 'maxlength="200"')}
+    <div class="due">
+      <label>Apre il<input name="apertura" type="date" value="${b.apertura || ''}" /></label>
+      <label>Scade il<input name="scadenza" type="date" value="${b.scadenza || ''}" /></label>
+    </div>
+    <label style="display:flex;gap:8px;align-items:center"><input name="data_stimata" type="checkbox" ${b.data_stimata ? 'checked' : ''} /> Date stimate, non ancora ufficiali</label>
+    ${campo('importo', 'Importo', 'maxlength="300"')}
+    ${area('chi_puo', 'Chi può partecipare')}
+    ${area('per_locus', 'Perché interessa a Locus')}
+    ${campo('link', 'Link al bando', 'type="url"')}
+    ${b.link ? `<p class="aiuto"><a href="${esc(b.link)}" target="_blank" rel="noopener">Apri il bando</a></p>` : ''}
+    <div class="due">
+      <label>Stato<select name="stato">${STATI_BANDO.map((s) => `<option ${s === b.stato ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
+      ${campo('referente', 'Chi se ne occupa', 'maxlength="100"')}
+    </div>
+    ${area('note', 'Note', 110)}
+    <div class="azioni">
+      <button class="primo" type="submit">Salva</button>
+      ${b.id && b.stato !== 'scartato' ? '<button type="button" data-scarta>Non fa per noi: scarta</button>' : ''}
+    </div>
+    <p class="msg" aria-live="polite"></p>
+  </form>`;
+  document.body.appendChild(box);
+  const form = box.querySelector('form'), msg = box.querySelector('.msg');
+  const chiudi = () => box.remove();
+  box.addEventListener('click', (ev) => { if (ev.target === box || ev.target.dataset.chiudi !== undefined) chiudi(); });
+  const salva = async (extra = {}) => {
+    if (!extra.stato && !form.reportValidity()) return;
+    const d = Object.fromEntries(new FormData(form));
+    for (const k in d) d[k] = d[k].trim() || null;
+    const riga = { ...d, titolo: d.titolo || b.titolo, data_stimata: form.data_stimata.checked, ...extra };
+    const q = b.id ? sb.from('bandi').update(riga).eq('id', b.id) : sb.from('bandi').insert({ ...riga, origine: 'mano' });
+    const { error } = await q;
+    if (error) return scrivi(msg, /duplicate key.*link/i.test(error.message) ? 'C\'è già un bando con questo link.' : spiegaErrore(error), 'no');
+    chiudi(); bandi();
+  };
+  form.addEventListener('submit', (ev) => { ev.preventDefault(); salva(); });
+  box.querySelector('[data-scarta]')?.addEventListener('click', () => salva({ stato: 'scartato' }));
+}
+
+// i bandi trovati in automatico e non ancora guardati, accanto al nome della scheda
+async function contaBandi(n) {
+  const b = [...$('#schede').children].find((x) => x.dataset.id === 'bandi');
+  if (!b) return;
+  if (n === undefined) {
+    const { count } = await sb.from('bandi').select('id', { count: 'exact', head: true }).eq('stato', 'da valutare').eq('origine', 'automatico');
     n = count || 0;
   }
   b.querySelector('.conta')?.remove();
