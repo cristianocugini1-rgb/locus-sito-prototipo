@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prove carattere fascia nomi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Narrow:wght@500&family=Bricolage+Grotesque:opsz,wght@12..96,500&family=DM+Serif+Display&family=Fraunces:opsz,wght@9..144,400&family=Instrument+Serif&family=Inter:wght@400&family=Space+Grotesk:wght@400&family=Syne:wght@600&family=Unbounded:wght@400&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; background: #210605; color: #F5E4CB; font-family: Inter, sans-serif; }
+    .p { padding: 7vh 6vw 8vh; border-bottom: 1px solid rgba(245,228,203,.15); overflow: hidden; }
+    .lab { font-size: 13px; letter-spacing: .2em; text-transform: uppercase; opacity: .5; margin: 0 0 28px; }
+    .kicker { font-size: 16px; letter-spacing: .26em; text-transform: uppercase; color: #d0462e; margin: 0; }
+    .nomi { display: flex; gap: 80px; white-space: nowrap; padding: 10px 0; font-size: clamp(40px, 5vw, 84px); line-height: 1.1; }
+    .titolo { font-family: Anton, sans-serif; text-transform: uppercase; line-height: .9; font-size: clamp(56px, 8vw, 140px); margin: 6vh 0 0; max-width: 12ch; }
+    .f1 .nomi { font-family: 'Instrument Serif', serif; }
+    .f2 .nomi { font-family: 'Fraunces', serif; font-weight: 400; }
+    .f3 .nomi { font-family: 'DM Serif Display', serif; }
+    .f4 .nomi { font-family: 'Space Grotesk', sans-serif; letter-spacing: -.02em; }
+    .f5 .nomi { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 500; letter-spacing: -.02em; }
+    .f6 .nomi { font-family: 'Syne', sans-serif; font-weight: 600; }
+    .f7 .nomi { font-family: 'Unbounded', sans-serif; font-size: clamp(30px, 3.8vw, 64px); }
+    .f8 .nomi { font-family: 'Archivo Narrow', sans-serif; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
+  </style>
+</head>
+<body>
+  <template id="t">
+    <p class="kicker">Con chi abbiamo lavorato</p>
+    <div class="nomi"><span>TEDx</span><span>Festival della Lentezza</span><span>The Hub</span><span>The Parmigianer</span><span>Progetto SUM</span><span>Il Borgo</span></div>
+    <h1 class="titolo">Il ponte tra le persone e chi decide.</h1>
+  </template>
+  <section class="p f1"><p class="lab">1 · Instrument Serif</p></section>
+  <section class="p f2"><p class="lab">2 · Fraunces</p></section>
+  <section class="p f3"><p class="lab">3 · DM Serif Display</p></section>
+  <section class="p f4"><p class="lab">4 · Space Grotesk</p></section>
+  <section class="p f5"><p class="lab">5 · Bricolage Grotesque</p></section>
+  <section class="p f6"><p class="lab">6 · Syne</p></section>
+  <section class="p f7"><p class="lab">7 · Unbounded</p></section>
+  <section class="p f8"><p class="lab">8 · Archivo Narrow maiuscolo</p></section>
+  <script>
+    const t = document.getElementById('t');
+    document.querySelectorAll('.p').forEach(s => s.appendChild(t.content.cloneNode(true)));
+  </script>
+</body>
+</html>

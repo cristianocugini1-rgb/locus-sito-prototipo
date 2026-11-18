@@ -44,12 +44,12 @@ main, .foot { position: relative; z-index: 2; }
 .nav.solid { padding-top: 14px; padding-bottom: 14px; }
 html.menu-open, body.menu-open { overflow: hidden; overscroll-behavior: none; }
 .logo {
-  margin-right: auto; display: block; height: 40px; padding: 6px 10px; box-sizing: border-box;
-  background: var(--rosso-vivo); /* dal 12/11 la scritta Locus sta su fondo rosso */
+  /* dal 18/11 logo bianco trasparente, più grande e senza fondo rosso (prima 28 px di scritta su rosso) */
+  margin-right: auto; display: block; height: clamp(38px, 3.6vw, 54px); padding: 0; box-sizing: border-box;
   /* è anche la porta del gestionale (pressione lunga): sul telefono niente menu, selezione o anteprima */
   -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation;
 }
-.logo img { height: 100%; width: auto; mix-blend-mode: screen; object-fit: contain; pointer-events: none; -webkit-user-drag: none; }
+.logo img { display: block; height: 100%; width: auto; object-fit: contain; pointer-events: none; -webkit-user-drag: none; }
 #menu { display: flex; gap: 26px; }
 #menu a {
   text-decoration: none; font-size: 12px; letter-spacing: .2em; text-transform: uppercase;
@@ -236,7 +236,8 @@ figcaption { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1
 .hero .rullino { margin: calc(110px + env(safe-area-inset-top)) 0 auto; padding-bottom: 6vh; }
 .hero .rullino .kicker { margin: 0; }
 .hero .marquee .track { gap: 80px; }
-.hero .marquee .track span, .hero .marquee .track span:nth-child(odd) { font-size: clamp(40px, 5vw, 84px); opacity: 1; }
+/* nomi in Bricolage Grotesque minuscolo: l'Anton resta solo al titolo, così fascia e titolo si staccano (18/11, scelto da Cristiano su prove-fascia.html) */
+.hero .marquee .track span, .hero .marquee .track span:nth-child(odd) { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 500; letter-spacing: -.02em; text-transform: none; font-size: clamp(40px, 5vw, 84px); line-height: 1.1; opacity: 1; }
 @keyframes run { to { transform: translateX(-50%); } }
 
 /* contatti */
